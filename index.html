@@ -1,70 +1,53 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <title>نسخة Web OCR الذكية</title>
+  <title>الذكاء البصري - Web OCR</title>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.4/dist/tesseract.min.js"></script>
   <style>
-    body {
-      font-family: sans-serif;
-      direction: rtl;
-      text-align: center;
-      background-color: #f2f2f2;
-    }
-    h1 {
-      color: #007bff;
-    }
-    #result {
-      white-space: pre-wrap;
-      background: #fff;
-      padding: 10px;
-      border: 1px solid #ccc;
-      margin-top: 15px;
-    }
-    input, button {
-      margin-top: 10px;
-    }
+    body { font-family: 'Cairo', sans-serif; text-align: center; padding: 20px; background: #f4f4f4; }
+    h1 { color: #2c3e50; }
+    input[type=file] { margin: 20px; }
+    #output { white-space: pre-wrap; background: #fff; padding: 15px; border-radius: 10px; margin-top: 20px; text-align: right; }
+    #loading { display: none; color: green; font-weight: bold; }
   </style>
 </head>
 <body>
-  <h1>🔍 نسخة Web OCR الذكية</h1>
+
+  <h1>📷 أداة الذكاء البصري - OCR</h1>
+  <p>قم برفع صورة تحتوي على نص، وسنقوم باستخراج النص تلقائيًا.</p>
+
   <input type="file" id="imageInput" accept="image/*">
-  <br>
-  <button onclick="performOCR()">بدء التحليل الذكي للصورة</button>
-  <p id="loading"></p>
-  <div id="result"></div>
+  <div id="loading">جارٍ التحليل، انتظر لحظة...</div>
+  <div id="output">النص سيظهر هنا بعد التحليل.</div>
 
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.1/dist/tesseract.min.js"></script>
   <script>
-    function performOCR() {
-      const imageInput = document.getElementById('imageInput');
-      const loading = document.getElementById('loading');
-      const resultDiv = document.getElementById('result');
-      resultDiv.innerText = '';
-      loading.innerText = '⏳ جاري تحليل الصورة...';
+    const imageInput = document.getElementById('imageInput');
+    const outputDiv = document.getElementById('output');
+    const loading = document.getElementById('loading');
 
-      if (!imageInput.files.length) {
-        alert("يرجى اختيار صورة أولاً.");
-        loading.innerText = '';
-        return;
-      }
-
+    imageInput.addEventListener('change', () => {
       const file = imageInput.files[0];
-      const reader = new FileReader();
+      if (!file) return;
 
-      reader.onload = function () {
-        Tesseract.recognize(reader.result, 'ara+eng', {
+      loading.style.display = 'block';
+      outputDiv.textContent = '';
+
+      Tesseract.recognize(
+        file,
+        'ara+eng', // دعم اللغة العربية والإنجليزية
+        {
           logger: m => console.log(m)
-        }).then(({ data: { text } }) => {
-          loading.innerText = '✅ التحليل اكتمل!';
-          resultDiv.innerText = text;
-        }).catch(err => {
-          loading.innerText = '❌ حدث خطأ أثناء التحليل.';
-          console.error(err);
-        });
-      };
-
-      reader.readAsDataURL(file);
-    }
+        }
+      ).then(({ data: { text } }) => {
+        loading.style.display = 'none';
+        outputDiv.textContent = text.trim() || 'لم يتم التعرف على أي نص.';
+      }).catch(err => {
+        loading.style.display = 'none';
+        outputDiv.textContent = 'حدث خطأ أثناء التحليل: ' + err.message;
+      });
+    });
   </script>
+
 </body>
 </html>
