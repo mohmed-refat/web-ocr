@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>نسخة Web OCR الذكية</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      direction: rtl;
+      text-align: center;
+      background-color: #f2f2f2;
+    }
+    h1 {
+      color: #007bff;
+    }
+    #result {
+      white-space: pre-wrap;
+      background: #fff;
+      padding: 10px;
+      border: 1px solid #ccc;
+      margin-top: 15px;
+    }
+    input, button {
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔍 نسخة Web OCR الذكية</h1>
+  <input type="file" id="imageInput" accept="image/*">
+  <br>
+  <button onclick="performOCR()">بدء التحليل الذكي للصورة</button>
+  <p id="loading"></p>
+  <div id="result"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.1/dist/tesseract.min.js"></script>
+  <script>
+    function performOCR() {
+      const imageInput = document.getElementById('imageInput');
+      const loading = document.getElementById('loading');
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerText = '';
+      loading.innerText = '⏳ جاري تحليل الصورة...';
+
+      if (!imageInput.files.length) {
+        alert("يرجى اختيار صورة أولاً.");
+        loading.innerText = '';
+        return;
+      }
+
+      const file = imageInput.files[0];
+      const reader = new FileReader();
+
+      reader.onload = function () {
+        Tesseract.recognize(reader.result, 'ara+eng', {
+          logger: m => console.log(m)
+        }).then(({ data: { text } }) => {
+          loading.innerText = '✅ التحليل اكتمل!';
+          resultDiv.innerText = text;
+        }).catch(err => {
+          loading.innerText = '❌ حدث خطأ أثناء التحليل.';
+          console.error(err);
+        });
+      };
+
+      reader.readAsDataURL(file);
+    }
+  </script>
+</body>
+</html>
