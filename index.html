@@ -112,7 +112,15 @@
     function getHistory() {
       return JSON.parse(localStorage.getItem('ocr_history') || '[]');
     }
-  </script>
+     // ☁️ Cloud AI: أرسل النص إلى السيرفر العالمي
+    import('./cloud-ai.js').then(module => {
+      module.syncToCloud(cleanedText).then(cloudResponse => {
+        if (cloudResponse && cloudResponse.suggestion) {
+          aiResultDiv.textContent += "\n🌐 توصية سحابية: " + cloudResponse.suggestion;
+        }
+      });
+    });
+ </script>
 
 </body>
 </html>
