@@ -1,80 +1,118 @@
-<script>
-  const imageInput = document.getElementById('imageInput');
-  const outputDiv = document.getElementById('output');
-  const aiResultDiv = document.getElementById('aiResult');
-  const loading = document.getElementById('loading');
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>الذكاء البصري - Web OCR + تحليل ذكي</title>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.4/dist/tesseract.min.js"></script>
+  <style>
+    body { font-family: 'Cairo', sans-serif; text-align: center; padding: 20px; background: #f4f4f4; }
+    h1 { color: #2c3e50; }
+    input[type=file] { margin: 20px; }
+    #output, #aiResult {
+      white-space: pre-wrap;
+      background: #fff;
+      padding: 15px;
+      border-radius: 10px;
+      margin-top: 20px;
+      text-align: right;
+    }
+    #loading { display: none; color: green; font-weight: bold; }
+    #aiResult.success { background: #dff0d8; color: #3c763d; font-weight: bold; }
+    #aiResult.warning { background: #fcf8e3; color: #8a6d3b; font-weight: bold; }
+    #aiResult.danger { background: #f2dede; color: #a94442; font-weight: bold; }
+  </style>
+</head>
+<body>
 
-  imageInput.addEventListener('change', () => {
-    const file = imageInput.files[0];
-    if (!file) return;
+  <h1>📷 Web OCR + الذكاء التحليلي</h1>
+  <p>ارفع صورة تحتوي على نتائج لعبة، وسنقوم بتحليلها ذكيًا.</p>
 
-    loading.style.display = 'block';
-    outputDiv.textContent = '';
-    aiResultDiv.textContent = '';
-    aiResultDiv.className = '';
+  <input type="file" id="imageInput" accept="image/*">
+  <div id="loading">🔍 جارٍ التحليل الذكي...</div>
 
-    Tesseract.recognize(
-      file,
-      'ara+eng',
-      { logger: m => console.log(m) }
-    ).then(({ data: { text } }) => {
-      loading.style.display = 'none';
-      const cleanedText = text.trim();
-      outputDiv.textContent = cleanedText || 'لم يتم التعرف على أي نص.';
+  <div id="output">📄 النص المستخرج سيظهر هنا.</div>
+  <div id="aiResult">🤖 التحليل الذكي سيظهر هنا.</div>
 
-      // 🧠 حفظ النتيجة في التخزين المحلي (Reinforcement AI)
-      storeInHistory(cleanedText);
+  <script>
+    const imageInput = document.getElementById('imageInput');
+    const outputDiv = document.getElementById('output');
+    const aiResultDiv = document.getElementById('aiResult');
+    const loading = document.getElementById('loading');
 
-      // 🤖 تحليل النص
-      const decision = analyzeText(cleanedText);
-      aiResultDiv.textContent = decision.message;
-      aiResultDiv.className = decision.level;
-    }).catch(err => {
-      loading.style.display = 'none';
-      outputDiv.textContent = 'حدث خطأ أثناء التحليل: ' + err.message;
+    imageInput.addEventListener('change', () => {
+      const file = imageInput.files[0];
+      if (!file) return;
+
+      loading.style.display = 'block';
+      outputDiv.textContent = '';
+      aiResultDiv.textContent = '';
+      aiResultDiv.className = '';
+
+      Tesseract.recognize(
+        file,
+        'ara+eng',
+        { logger: m => console.log(m) }
+      ).then(({ data: { text } }) => {
+        loading.style.display = 'none';
+        const cleanedText = text.trim();
+        outputDiv.textContent = cleanedText || 'لم يتم التعرف على أي نص.';
+
+        // 🧠 حفظ النتيجة في التخزين المحلي (Reinforcement AI)
+        storeInHistory(cleanedText);
+
+        // 🤖 تحليل النص
+        const decision = analyzeText(cleanedText);
+        aiResultDiv.textContent = decision.message;
+        aiResultDiv.className = decision.level;
+      }).catch(err => {
+        loading.style.display = 'none';
+        outputDiv.textContent = 'حدث خطأ أثناء التحليل: ' + err.message;
+      });
     });
-  });
 
-  // 🧠 Decision AI
-  function analyzeText(text) {
-    const lower = text.toLowerCase();
-    const history = getHistory();
+    // 🧠 Decision AI
+    function analyzeText(text) {
+      const lower = text.toLowerCase();
+      const history = getHistory();
 
-    // تحليل Crash
-    if (lower.includes("crash") || lower.includes("x")) {
-      let crashValues = lower.match(/([0-9]+\.[0-9]+)x/g) || [];
-      let avg = crashValues.map(v => parseFloat(v)).reduce((a,b) => a + b, 0) / (crashValues.length || 1);
+      // تحليل Crash
+      if (lower.includes("crash") || lower.includes("x")) {
+        let crashValues = lower.match(/([0-9]+\.[0-9]+)x/g) || [];
+        let avg = crashValues.map(v => parseFloat(v)).reduce((a,b) => a + b, 0) / (crashValues.length || 1);
 
-      if (avg < 1.5) {
-        return { message: "📉 التحليل: معدل منخفض - تجنب اللعب الآن.", level: "danger" };
-      } else if (avg < 3.0) {
-        return { message: "📈 التحليل: متوسط - تابع الحذر.", level: "warning" };
-      } else {
-        return { message: "🚀 التحليل: معدل عالي! راقب الفرصة القادمة.", level: "success" };
+        if (avg < 1.5) {
+          return { message: "📉 التحليل: معدل منخفض - تجنب اللعب الآن.", level: "danger" };
+        } else if (avg < 3.0) {
+          return { message: "📈 التحليل: متوسط - تابع الحذر.", level: "warning" };
+        } else {
+          return { message: "🚀 التحليل: معدل عالي! راقب الفرصة القادمة.", level: "success" };
+        }
       }
+
+      // تحليل Mines
+      if (lower.includes("mines") || lower.includes("bomb") || lower.includes("💣")) {
+        return { message: "💣 تم الكشف عن لعبة Mines. جاري التعلّم من النتائج...", level: "warning" };
+      }
+
+      // تحليل عام
+      if (lower.length < 10) {
+        return { message: "📭 لم يتم التعرف على نتائج مفهومة. حاول بصورة أوضح.", level: "danger" };
+      }
+
+      return { message: "🔄 جارٍ التعلم من النمط الجديد...", level: "warning" };
     }
 
-    // تحليل Mines
-    if (lower.includes("mines") || lower.includes("bomb") || lower.includes("💣")) {
-      return { message: "💣 تم الكشف عن لعبة Mines. جاري التعلّم من النتائج...", level: "warning" };
+    // 🧠 تخزين التاريخ محليًا (Reinforcement AI)
+    function storeInHistory(newText) {
+      const history = getHistory();
+      history.push({ text: newText, timestamp: new Date().toISOString() });
+      localStorage.setItem('ocr_history', JSON.stringify(history.slice(-50))); // حفظ آخر 50 فقط
     }
 
-    // تحليل عام
-    if (lower.length < 10) {
-      return { message: "📭 لم يتم التعرف على نتائج مفهومة. حاول بصورة أوضح.", level: "danger" };
+    function getHistory() {
+      return JSON.parse(localStorage.getItem('ocr_history') || '[]');
     }
+  </script>
 
-    return { message: "🔄 جارٍ التعلم من النمط الجديد...", level: "warning" };
-  }
-
-  // 🧠 تخزين التاريخ محليًا (Reinforcement AI)
-  function storeInHistory(newText) {
-    const history = getHistory();
-    history.push({ text: newText, timestamp: new Date().toISOString() });
-    localStorage.setItem('ocr_history', JSON.stringify(history.slice(-50))); // حفظ آخر 50 فقط
-  }
-
-  function getHistory() {
-    return JSON.parse(localStorage.getItem('ocr_history') || '[]');
-  }
-</script>
+</body>
+</html>
