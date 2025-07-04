@@ -2,7 +2,7 @@
 <html lang="ar">
 <head>
   <meta charset="UTF-8">
-  <title>النسخة الذكية Web OCR</title>
+  <title>النسخة المتقدمة Web OCR</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -22,94 +22,96 @@
       font-size: 16px;
       text-align: right;
     }
+    #history {
+      margin-top: 30px;
+      background: #e8e8e8;
+      padding: 10px;
+      border-radius: 8px;
+    }
   </style>
 </head>
 <body>
-  <h1>📷 النسخة الذكية لتحليل نتائج الألعاب - Web OCR</h1>
-  <p>ارفع صورة تحتوي على نتائج من لعبة في Linebet أو 1xBet</p>
+  <h1>🧠 النسخة المتقدمة - Web OCR</h1>
+  <p>ارفع صورة من اللعبة لبدء التحليل الذكي</p>
   <input type="file" accept="image/*" onchange="handleImage(event)">
-  <div id="result">⚙️ في انتظار صورة لتحليلها...</div>
+  <div id="result">📷 في انتظار صورة...</div>
+  <div id="history"><strong>🕓 آخر 5 تحليلات:</strong><ul id="historyList"></ul></div>
 
   <!-- مكتبة OCR -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
 
+  <!-- التوصيات الصوتية -->
+  <script>
+    function speak(text) {
+      if ('speechSynthesis' in window) {
+        const msg = new SpeechSynthesisUtterance(text);
+        msg.lang = 'ar-SA';
+        window.speechSynthesis.speak(msg);
+      }
+    }
+  </script>
+
   <script>
     const resultDiv = document.getElementById('result');
+    const historyList = document.getElementById('historyList');
 
     function handleImage(event) {
       const file = event.target.files[0];
       if (!file) return;
 
-      resultDiv.textContent = '📤 جارٍ تحليل الصورة...';
+      resultDiv.textContent = '⏳ جارٍ معالجة الصورة...';
 
       Tesseract.recognize(file, 'eng', {
         logger: m => console.log(m)
       }).then(({ data: { text } }) => {
         const cleanedText = text.trim();
-        resultDiv.textContent = '🧠 النص المُستخرج:\n' + cleanedText;
+        const now = new Date().toLocaleString('ar-EG');
+        let analysis = '';
+        let voiceMessage = '';
 
-        // تحليل ذكي مبدئي محلي (بسيط)
-        const aiResultDiv = document.createElement('div');
-        aiResultDiv.style.marginTop = '20px';
-        aiResultDiv.style.color = '#006600';
-
+        // تحليل ذكي
         if (cleanedText.includes('win') || cleanedText.includes('Victory') || cleanedText.includes('x2')) {
-          aiResultDiv.textContent = '✅ تحليل AI: احتمال كبير أن النتيجة كانت فوزًا.';
+          analysis = '✅ فوز متوقّع.';
+          voiceMessage = 'تم التعرف على فوز.';
         } else if (cleanedText.includes('lose') || cleanedText.includes('fail') || cleanedText.includes('x0')) {
-          aiResultDiv.textContent = '❌ تحليل AI: هذه النتيجة تشير إلى خسارة.';
+          analysis = '❌ خسارة متوقّعة.';
+          voiceMessage = 'تم التعرف على خسارة.';
         } else {
-          aiResultDiv.textContent = '🤖 تحليل AI: لم يتم التعرّف بدقة على النتيجة.';
+          analysis = '🤖 لم يتم التعرف على نتيجة واضحة.';
+          voiceMessage = 'لم يتم تحديد النتيجة بدقة.';
         }
 
-        resultDiv.appendChild(aiResultDiv);
+        const fullResult = `📄 النص المُستخرج:\n${cleanedText}\n\n🧠 التحليل:\n${analysis}\n📅 الوقت: ${now}`;
+        resultDiv.textContent = fullResult;
+        speak(voiceMessage);
 
-        // إرسال إلى Cloud AI
-        syncToCloud(cleanedText).then(cloudResponse => {
-          if (cloudResponse && cloudResponse.suggestion) {
-            const cloudDiv = document.createElement('div');
-            cloudDiv.style.marginTop = '15px';
-            cloudDiv.style.color = '#000066';
-            cloudDiv.textContent = '🌐 توصية سحابية: ' + cloudResponse.suggestion;
-            resultDiv.appendChild(cloudDiv);
-          }
-        });
+        // حفظ النتيجة محلياً
+        const history = JSON.parse(localStorage.getItem('ocr_history') || '[]');
+        history.unshift({ time: now, result: analysis });
+        if (history.length > 5) history.pop();
+        localStorage.setItem('ocr_history', JSON.stringify(history));
+
+        // تحديث التاريخ
+        updateHistoryList();
 
       }).catch(err => {
-        resultDiv.textContent = '❌ فشل في قراءة الصورة:\n' + err.message;
+        resultDiv.textContent = '❌ فشل في التحليل:\n' + err.message;
+        speak('فشل في قراءة الصورة.');
       });
     }
 
-    // Cloud AI المدمج داخل الصفحة
-    function getDeviceId() {
-      let id = localStorage.getItem('cloud_device_id');
-      if (!id) {
-        id = 'device-' + Math.random().toString(36).substring(2, 10);
-        localStorage.setItem('cloud_device_id', id);
-      }
-      return id;
+    function updateHistoryList() {
+      const history = JSON.parse(localStorage.getItem('ocr_history') || '[]');
+      historyList.innerHTML = '';
+      history.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = `${item.time} - ${item.result}`;
+        historyList.appendChild(li);
+      });
     }
 
-    async function syncToCloud(ocrText) {
-      try {
-        const payload = {
-          text: ocrText,
-          deviceId: getDeviceId(),
-          timestamp: new Date().toISOString()
-        };
-
-        const res = await fetch('https://api.cloud-ai-linebet.net/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        const json = await res.json();
-        return json;
-      } catch (err) {
-        console.warn("⛔ فشل الاتصال بالسيرفر السحابي:", err.message);
-        return { status: "offline", suggestion: "تعذّر الاتصال بالسحابة." };
-      }
-    }
+    // عند الفتح لأول مرة
+    updateHistoryList();
   </script>
 </body>
 </html>
