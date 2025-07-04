@@ -1,117 +1,93 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-  <meta charset="UTF-8">
-  <title>النسخة المتقدمة Web OCR</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>نظام Web OCR الذكي</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Tajawal', sans-serif;
+      background: #f2f2f2;
       text-align: center;
       padding: 20px;
-      direction: rtl;
+    }
+    h1 {
+      color: #2c3e50;
     }
     input[type="file"] {
       margin: 20px 0;
     }
     #result {
-      margin-top: 20px;
-      white-space: pre-wrap;
-      background-color: #f5f5f5;
+      background: white;
       padding: 15px;
       border-radius: 8px;
-      font-size: 16px;
-      text-align: right;
-    }
-    #history {
-      margin-top: 30px;
-      background: #e8e8e8;
-      padding: 10px;
-      border-radius: 8px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+      margin-top: 20px;
+      direction: rtl;
     }
   </style>
+
+  <!-- مكتبة Tesseract.js (OCR) -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.5/dist/tesseract.min.js"></script>
+
+  <!-- مكتبات Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-database-compat.js"></script>
 </head>
+
 <body>
-  <h1>🧠 النسخة المتقدمة - Web OCR</h1>
-  <p>ارفع صورة من اللعبة لبدء التحليل الذكي</p>
-  <input type="file" accept="image/*" onchange="handleImage(event)">
-  <div id="result">📷 في انتظار صورة...</div>
-  <div id="history"><strong>🕓 آخر 5 تحليلات:</strong><ul id="historyList"></ul></div>
+  <h1>🔍 نظام Web OCR الذكي</h1>
 
-  <!-- مكتبة OCR -->
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
+  <input type="file" id="imageInput" accept="image/*" />
+  <div id="result">نتائج التحليل ستظهر هنا...</div>
 
-  <!-- التوصيات الصوتية -->
   <script>
-    function speak(text) {
-      if ('speechSynthesis' in window) {
-        const msg = new SpeechSynthesisUtterance(text);
-        msg.lang = 'ar-SA';
-        window.speechSynthesis.speak(msg);
-      }
+    // إعداد Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyCijdq8Ji8L9e3dGoHK72LaAUWsz_e5V6Y",
+      authDomain: "web-ocr-ai.firebaseapp.com",
+      projectId: "web-ocr-ai",
+      storageBucket: "web-ocr-ai.firebasestorage.app",
+      messagingSenderId: "847993614836",
+      appId: "1:847993614836:web:a2b6e91c94426dd01549a1",
+      measurementId: "G-TTQZPVWFL4"
+    };
+
+    // تهيئة Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    // وظيفة حفظ النتائج في Firebase
+    function saveOCRResult(result) {
+      const timestamp = Date.now();
+      database.ref('ocr-results/' + timestamp).set({
+        text: result,
+        time: new Date().toLocaleString()
+      });
     }
-  </script>
 
-  <script>
-    const resultDiv = document.getElementById('result');
-    const historyList = document.getElementById('historyList');
-
-    function handleImage(event) {
-      const file = event.target.files[0];
+    // OCR عند اختيار صورة
+    document.getElementById('imageInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
       if (!file) return;
 
-      resultDiv.textContent = '⏳ جارٍ معالجة الصورة...';
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = "⏳ جاري التحليل...";
 
-      Tesseract.recognize(file, 'eng', {
-        logger: m => console.log(m)
-      }).then(({ data: { text } }) => {
-        const cleanedText = text.trim();
-        const now = new Date().toLocaleString('ar-EG');
-        let analysis = '';
-        let voiceMessage = '';
-
-        // تحليل ذكي
-        if (cleanedText.includes('win') || cleanedText.includes('Victory') || cleanedText.includes('x2')) {
-          analysis = '✅ فوز متوقّع.';
-          voiceMessage = 'تم التعرف على فوز.';
-        } else if (cleanedText.includes('lose') || cleanedText.includes('fail') || cleanedText.includes('x0')) {
-          analysis = '❌ خسارة متوقّعة.';
-          voiceMessage = 'تم التعرف على خسارة.';
-        } else {
-          analysis = '🤖 لم يتم التعرف على نتيجة واضحة.';
-          voiceMessage = 'لم يتم تحديد النتيجة بدقة.';
+      Tesseract.recognize(
+        file,
+        'ara', // اللغة العربية
+        {
+          logger: m => console.log(m)
         }
-
-        const fullResult = `📄 النص المُستخرج:\n${cleanedText}\n\n🧠 التحليل:\n${analysis}\n📅 الوقت: ${now}`;
-        resultDiv.textContent = fullResult;
-        speak(voiceMessage);
-
-        // حفظ النتيجة محلياً
-        const history = JSON.parse(localStorage.getItem('ocr_history') || '[]');
-        history.unshift({ time: now, result: analysis });
-        if (history.length > 5) history.pop();
-        localStorage.setItem('ocr_history', JSON.stringify(history));
-
-        // تحديث التاريخ
-        updateHistoryList();
-
+      ).then(({ data: { text } }) => {
+        resultDiv.innerHTML = `<b>النص المستخرج:</b><br>${text}`;
+        saveOCRResult(text); // حفظ في السحابة
       }).catch(err => {
-        resultDiv.textContent = '❌ فشل في التحليل:\n' + err.message;
-        speak('فشل في قراءة الصورة.');
+        resultDiv.innerHTML = "❌ حدث خطأ أثناء التحليل.";
+        console.error(err);
       });
-    }
-
-    function updateHistoryList() {
-      const history = JSON.parse(localStorage.getItem('ocr_history') || '[]');
-      historyList.innerHTML = '';
-      history.forEach(item => {
-        const li = document.createElement('li');
-        li.textContent = `${item.time} - ${item.result}`;
-        historyList.appendChild(li);
-      });
-    }
-
-    // عند الفتح لأول مرة
-    updateHistoryList();
+    });
   </script>
 </body>
 </html>
