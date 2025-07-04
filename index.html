@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>نظام Web OCR الذكي</title>
+  <title>نظام Web OCR الذكي - تحليل لعبة Crash</title>
   <style>
     body {
       font-family: 'Tajawal', sans-serif;
       background: #f2f2f2;
       text-align: center;
       padding: 20px;
+      direction: rtl;
     }
     h1 {
       color: #2c3e50;
@@ -17,35 +18,32 @@
     input[type="file"] {
       margin: 20px 0;
     }
-    #result, #ai-result {
+    #result, #prediction {
       background: white;
       padding: 15px;
       border-radius: 8px;
       box-shadow: 0 0 5px rgba(0,0,0,0.1);
       margin-top: 20px;
       direction: rtl;
-      text-align: right;
     }
+    .safe { color: green; font-weight: bold; }
+    .risky { color: red; font-weight: bold; }
   </style>
 
-  <!-- مكتبة Tesseract.js (OCR) -->
+  <!-- مكتبة OCR -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.5/dist/tesseract.min.js"></script>
 
-  <!-- مكتبات Firebase -->
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-database-compat.js"></script>
 </head>
 
 <body>
-  <h1>🔍 نظام Web OCR الذكي</h1>
+  <h1>🔍 نظام Web OCR الذكي - تحليل لعبة Crash</h1>
 
   <input type="file" id="imageInput" accept="image/*" />
-  <div id="result">نتائج التحليل ستظهر هنا...</div>
-
-  <!-- ✅ قسم عرض الذكاء الاصطناعي -->
-  <div id="ai-result">
-    <h3>📊 تحليل الذكاء الاصطناعي قيد الانتظار...</h3>
-  </div>
+  <div id="result">📤 نتائج تحليل الصورة ستظهر هنا</div>
+  <div id="prediction">📊 تحليل الجولة القادمة سيظهر هنا</div>
 
   <script>
     // إعداد Firebase
@@ -59,85 +57,62 @@
       measurementId: "G-TTQZPVWFL4"
     };
 
-    const app = firebase.initializeApp(firebaseConfig);
+    firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
+    // تحليل النص لاستخراج أرقام Crash
+    function extractCrashValues(text) {
+      const regex = /(\d+(\.\d+)?)x/g;
+      const matches = [...text.matchAll(regex)].map(m => parseFloat(m[1]));
+      return matches;
+    }
+
+    // تحليل الأنماط وتقديم التوصية
+    function analyzeCrashData(values) {
+      if (values.length < 3) return "🔄 بحاجة إلى مزيد من البيانات...";
+      const avg = values.reduce((a,b) => a+b, 0) / values.length;
+      const last = values[values.length - 1];
+      if (last < 1.5 && avg < 2.0) {
+        return `<span class="safe">✅ الجولة القادمة آمنة غالبًا</span>`;
+      } else if (last > 3.0) {
+        return `<span class="risky">⚠️ احتمالية انهيار مبكر! كن حذرًا</span>`;
+      } else {
+        return `🔍 لا يوجد نمط واضح، تابع المراقبة...`;
+      }
+    }
+
+    // حفظ النتائج في Firebase
     function saveOCRResult(result) {
       const timestamp = Date.now();
-      database.ref('ocr-results/' + timestamp).set({
+      database.ref('ocr-crash/' + timestamp).set({
         text: result,
         time: new Date().toLocaleString()
       });
     }
 
+    // عند اختيار صورة
     document.getElementById('imageInput').addEventListener('change', function(e) {
       const file = e.target.files[0];
       if (!file) return;
 
       const resultDiv = document.getElementById('result');
-      resultDiv.innerHTML = "⏳ جاري التحليل...";
+      const predictionDiv = document.getElementById('prediction');
+      resultDiv.innerHTML = "⏳ جاري تحليل الصورة...";
+      predictionDiv.innerHTML = "";
 
-      Tesseract.recognize(
-        file,
-        'ara', // اللغة العربية
-        {
-          logger: m => console.log(m)
-        }
-      ).then(({ data: { text } }) => {
+      Tesseract.recognize(file, 'eng', {
+        logger: m => console.log(m)
+      }).then(({ data: { text } }) => {
         resultDiv.innerHTML = `<b>النص المستخرج:</b><br>${text}`;
         saveOCRResult(text);
-        analyzeResults(text); // ✅ تحليل ذكي تلقائي
+
+        const values = extractCrashValues(text);
+        predictionDiv.innerHTML = `<b>📈 قيم الجولات:</b> ${values.join(', ')}<br><b>🔮 التوصية:</b><br>` + analyzeCrashData(values);
       }).catch(err => {
         resultDiv.innerHTML = "❌ حدث خطأ أثناء التحليل.";
         console.error(err);
       });
     });
-
-    // ✅ الذكاء الاصطناعي لتحليل النتائج
-    function analyzeResults(text) {
-      const cleaned = text.replace(/[^\w\s]/g, "").toLowerCase();
-      const words = cleaned.split(/\s+/);
-
-      let pattern = detectPattern(words);
-      let recommendation = getRecommendation(pattern);
-
-      displayAIResult(pattern, recommendation);
-    }
-
-    function detectPattern(words) {
-      if (words.includes("lose") || words.includes("خسرت")) {
-        return "نمط خسارة متكرر";
-      } else if (words.filter(w => w === "win" || w === "فزت").length >= 2) {
-        return "نمط فوز متكرر";
-      } else if (words.join(" ").includes("crash at")) {
-        return "نمط لعبة Crash";
-      } else {
-        return "نمط غير معروف";
-      }
-    }
-
-    function getRecommendation(pattern) {
-      switch(pattern) {
-        case "نمط خسارة متكرر":
-          return { advice: "⚠️ تجنب اللعب الآن", confidence: "85%" };
-        case "نمط فوز متكرر":
-          return { advice: "✅ فرصة جيدة للعب", confidence: "80%" };
-        case "نمط لعبة Crash":
-          return { advice: "📉 راقب الانهيار، لا تدخل متأخرًا", confidence: "70%" };
-        default:
-          return { advice: "❓ غير كافٍ للتحليل", confidence: "50%" };
-      }
-    }
-
-    function displayAIResult(pattern, recommendation) {
-      const container = document.getElementById("ai-result");
-      container.innerHTML = `
-        <h3>📊 تحليل الذكاء الاصطناعي</h3>
-        <p><strong>النمط المكتشف:</strong> ${pattern}</p>
-        <p><strong>التوصية:</strong> ${recommendation.advice}</p>
-        <p><strong>نسبة الثقة:</strong> ${recommendation.confidence}</p>
-      `;
-    }
   </script>
 </body>
 </html>
