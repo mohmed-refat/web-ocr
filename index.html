@@ -43,6 +43,7 @@
 
   <label for="gameSelect">اختر اللعبة:</label>
   <select id="gameSelect">
+    <!-- نفس الخيارات كما هي -->
     <optgroup label="🎯 Crash Games">
       <option value="Aviator">Aviator</option>
       <option value="JetX">JetX</option>
@@ -113,6 +114,39 @@
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
+    // ✅ التحليل الذكي بعد OCR
+    function analyzeGameText(game, text) {
+      let recommendation = "🧠 جاري تطوير التوصيات لهذه اللعبة...";
+      const lowerText = text.toLowerCase();
+
+      if (game === "Aviator") {
+        const matches = lowerText.match(/(\d+(\.\d+)?)(x)/g);
+        if (matches && matches.length > 3) {
+          const last = parseFloat(matches[matches.length - 1]);
+          const prev = parseFloat(matches[matches.length - 2]);
+          const trend = last > prev ? "تصاعدي 🔺" : "تنازلي 🔻";
+          recommendation = `📈 النمط الحالي: ${trend}<br>🎯 التوصية: انتظر مضاعفة مرتفعة ثم ادخل بقيمة صغيرة.`;
+        }
+      }
+
+      else if (game === "Mines") {
+        if (lowerText.includes("bomb") || lowerText.includes("mine")) {
+          recommendation = "💣 اللعبة تحتوي على ألغام — جرب النقر من المنتصف أولًا.";
+        }
+      }
+
+      else if (game === "Dice") {
+        const numbers = text.match(/\b\d+\b/g);
+        if (numbers && numbers.length > 4) {
+          const avg = numbers.reduce((a, b) => a + parseInt(b), 0) / numbers.length;
+          recommendation = avg > 50 ? "🎲 الأرقام مرتفعة — جرب العب على +50." : "🎲 الأرقام منخفضة — جرب العب على -50.";
+        }
+      }
+
+      // ألعاب أخرى يمكن تطوير تحليلها لاحقًا
+      return recommendation;
+    }
+
     // OCR والتحليل
     document.getElementById('imageInput').addEventListener('change', function(e) {
       const file = e.target.files[0];
@@ -130,11 +164,19 @@
           logger: m => console.log(m)
         }
       ).then(({ data: { text } }) => {
-        resultDiv.innerHTML = `<b>🎮 اللعبة:</b> ${game}<br><b>📄 النص المستخرج:</b><br>${text}`;
         const timestamp = Date.now();
+        const recommendation = analyzeGameText(game, text);
+
+        resultDiv.innerHTML = `
+          <b>🎮 اللعبة:</b> ${game}<br>
+          <b>📄 النص المستخرج:</b><br>${text}<hr>
+          <b>🤖 التوصية الذكية:</b><br>${recommendation}
+        `;
+
         database.ref('ocr-results/' + timestamp).set({
           game: game,
           text: text,
+          recommendation: recommendation,
           time: new Date().toLocaleString()
         });
       }).catch(err => {
