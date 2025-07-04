@@ -17,13 +17,14 @@
     input[type="file"] {
       margin: 20px 0;
     }
-    #result {
+    #result, #ai-result {
       background: white;
       padding: 15px;
       border-radius: 8px;
       box-shadow: 0 0 5px rgba(0,0,0,0.1);
       margin-top: 20px;
       direction: rtl;
+      text-align: right;
     }
   </style>
 
@@ -41,6 +42,11 @@
   <input type="file" id="imageInput" accept="image/*" />
   <div id="result">نتائج التحليل ستظهر هنا...</div>
 
+  <!-- ✅ قسم عرض الذكاء الاصطناعي -->
+  <div id="ai-result">
+    <h3>📊 تحليل الذكاء الاصطناعي قيد الانتظار...</h3>
+  </div>
+
   <script>
     // إعداد Firebase
     const firebaseConfig = {
@@ -53,11 +59,9 @@
       measurementId: "G-TTQZPVWFL4"
     };
 
-    // تهيئة Firebase
     const app = firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
-    // وظيفة حفظ النتائج في Firebase
     function saveOCRResult(result) {
       const timestamp = Date.now();
       database.ref('ocr-results/' + timestamp).set({
@@ -66,7 +70,6 @@
       });
     }
 
-    // OCR عند اختيار صورة
     document.getElementById('imageInput').addEventListener('change', function(e) {
       const file = e.target.files[0];
       if (!file) return;
@@ -82,12 +85,59 @@
         }
       ).then(({ data: { text } }) => {
         resultDiv.innerHTML = `<b>النص المستخرج:</b><br>${text}`;
-        saveOCRResult(text); // حفظ في السحابة
+        saveOCRResult(text);
+        analyzeResults(text); // ✅ تحليل ذكي تلقائي
       }).catch(err => {
         resultDiv.innerHTML = "❌ حدث خطأ أثناء التحليل.";
         console.error(err);
       });
     });
+
+    // ✅ الذكاء الاصطناعي لتحليل النتائج
+    function analyzeResults(text) {
+      const cleaned = text.replace(/[^\w\s]/g, "").toLowerCase();
+      const words = cleaned.split(/\s+/);
+
+      let pattern = detectPattern(words);
+      let recommendation = getRecommendation(pattern);
+
+      displayAIResult(pattern, recommendation);
+    }
+
+    function detectPattern(words) {
+      if (words.includes("lose") || words.includes("خسرت")) {
+        return "نمط خسارة متكرر";
+      } else if (words.filter(w => w === "win" || w === "فزت").length >= 2) {
+        return "نمط فوز متكرر";
+      } else if (words.join(" ").includes("crash at")) {
+        return "نمط لعبة Crash";
+      } else {
+        return "نمط غير معروف";
+      }
+    }
+
+    function getRecommendation(pattern) {
+      switch(pattern) {
+        case "نمط خسارة متكرر":
+          return { advice: "⚠️ تجنب اللعب الآن", confidence: "85%" };
+        case "نمط فوز متكرر":
+          return { advice: "✅ فرصة جيدة للعب", confidence: "80%" };
+        case "نمط لعبة Crash":
+          return { advice: "📉 راقب الانهيار، لا تدخل متأخرًا", confidence: "70%" };
+        default:
+          return { advice: "❓ غير كافٍ للتحليل", confidence: "50%" };
+      }
+    }
+
+    function displayAIResult(pattern, recommendation) {
+      const container = document.getElementById("ai-result");
+      container.innerHTML = `
+        <h3>📊 تحليل الذكاء الاصطناعي</h3>
+        <p><strong>النمط المكتشف:</strong> ${pattern}</p>
+        <p><strong>التوصية:</strong> ${recommendation.advice}</p>
+        <p><strong>نسبة الثقة:</strong> ${recommendation.confidence}</p>
+      `;
+    }
   </script>
 </body>
 </html>
