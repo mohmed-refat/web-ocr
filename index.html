@@ -104,6 +104,13 @@
   <script>
     // إعداد Firebase
     const firebaseConfig = {
+<!-- 🧠 قسم ذكاء سحابي -->
+<div id="aiStatus" style="margin-top: 30px; background: #ffffff; padding: 15px; border-radius: 8px; box-shadow: 0 0 5px rgba(0,0,0,0.1); direction: rtl;">
+  <b>📊 ذكاء النظام الذاتي:</b><br>
+  <div id="aiStrength">⚙️ جاري تحميل قوة الذكاء...</div>
+  <div id="aiModules">📦 مكونات الذكاء قيد التحديث...</div>
+  <div id="aiUpdate">🕓 آخر تحديث: جاري التحميل...</div>
+</div>
       apiKey: "AIzaSyCijdq8Ji8L9e3dGoHK72LaAUWsz_e5V6Y",
       authDomain: "web-ocr-ai.firebaseapp.com",
       projectId: "web-ocr-ai",
@@ -235,3 +242,35 @@
   </script>
 </body>
 </html>
+function fetchGlobalAIModel() {
+  const aiStrength = document.getElementById("aiStrength");
+  const aiModules = document.getElementById("aiModules");
+  const aiUpdate = document.getElementById("aiUpdate");
+
+  database.ref('ai-model/global').once('value').then(snapshot => {
+    const data = snapshot.val();
+
+    if (data) {
+      aiStrength.innerHTML = `🧠 قوة الذكاء الذاتي: <b>${data.totalStrength || 0}%</b>`;
+      aiUpdate.innerHTML = `🕓 آخر تحديث عالمي: ${data.lastUpdated || 'غير معروف'}`;
+
+      if (data.modules) {
+        let modulesHTML = "";
+        for (let [key, value] of Object.entries(data.modules)) {
+          modulesHTML += `✅ ${key}: <b>${value}%</b><br>`;
+        }
+        aiModules.innerHTML = modulesHTML;
+      } else {
+        aiModules.innerHTML = "📦 لا توجد بيانات مكونات بعد.";
+      }
+    } else {
+      aiStrength.innerHTML = "❌ لا توجد بيانات ذكاء سحابي حالياً.";
+    }
+  }).catch(err => {
+    aiStrength.innerHTML = "❌ خطأ في تحميل الذكاء السحابي.";
+    console.error(err);
+  });
+}
+
+// ✅ تشغيل التحديث عند تشغيل الصفحة
+window.addEventListener('load', fetchGlobalAIModel);
