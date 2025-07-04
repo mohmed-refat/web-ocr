@@ -8,104 +8,135 @@
     body {
       font-family: 'Tajawal', sans-serif;
       background: #f2f2f2;
-      direction: rtl;
       text-align: center;
       padding: 20px;
     }
     h1 {
       color: #2c3e50;
     }
-    .section {
+    select, input[type="file"] {
+      margin: 10px;
+      padding: 10px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+    #result {
       background: white;
-      margin-top: 20px;
       padding: 15px;
       border-radius: 8px;
       box-shadow: 0 0 5px rgba(0,0,0,0.1);
-    }
-    input[type="file"] {
-      margin: 20px 0;
-    }
-    #result {
-      white-space: pre-wrap;
-      text-align: right;
-      color: #333;
-    }
-    select {
-      padding: 10px;
-      font-size: 16px;
+      margin-top: 20px;
+      direction: rtl;
     }
   </style>
 
-  <!-- Tesseract.js -->
+  <!-- مكتبة OCR -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.5/dist/tesseract.min.js"></script>
 
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-database-compat.js"></script>
 </head>
-
 <body>
-  <h1>🔍 نظام Web OCR الذكي</h1>
+  <h1>🔍 نظام Web OCR الذكي لجميع ألعاب Linebet / 1xBet</h1>
 
-  <div class="section">
-    <label for="gameSelect">اختر اللعبة:</label><br/>
-    <select id="gameSelect">
-      <option value="aviator">Aviator</option>
-      <option value="crash">Crash</option>
-      <option value="mines">Mines</option>
-      <option value="dice">Dice</option>
-      <option value="plinko">Plinko</option>
-      <option value="blackjack">Blackjack</option>
-      <option value="roulette">Roulette</option>
-      <option value="wheel">Wheel</option>
-    </select>
+  <label for="gameSelect">اختر اللعبة:</label>
+  <select id="gameSelect">
+    <optgroup label="🎯 Crash Games">
+      <option value="Aviator">Aviator</option>
+      <option value="JetX">JetX</option>
+      <option value="Zeppelin">Zeppelin</option>
+    </optgroup>
+    <optgroup label="💣 ألعاب الألغام">
+      <option value="Mines">Mines</option>
+      <option value="Safe Box">Safe Box</option>
+      <option value="Gold Mines">Gold Mines</option>
+    </optgroup>
+    <optgroup label="🎡 ألعاب العجلة">
+      <option value="Wheel of Fortune">Wheel of Fortune</option>
+      <option value="Mega Wheel">Mega Wheel</option>
+      <option value="Spaceman">Spaceman</option>
+    </optgroup>
+    <optgroup label="🎰 كازينو">
+      <option value="Blackjack">Blackjack</option>
+      <option value="Andar Bahar">Andar Bahar</option>
+      <option value="Teen Patti">Teen Patti</option>
+      <option value="Baccarat">Baccarat</option>
+      <option value="Dragon Tiger">Dragon Tiger</option>
+    </optgroup>
+    <optgroup label="🎲 ألعاب النرد">
+      <option value="Dice">Dice</option>
+      <option value="HiLo">HiLo</option>
+      <option value="Sic Bo">Sic Bo</option>
+    </optgroup>
+    <optgroup label="🧱 ألعاب Plinko">
+      <option value="Plinko Classic">Plinko Classic</option>
+      <option value="Plinko X">Plinko X</option>
+    </optgroup>
+    <optgroup label="🏁 سباقات افتراضية">
+      <option value="Horse Racing">Horse Racing</option>
+      <option value="Dog Racing">Dog Racing</option>
+    </optgroup>
+    <optgroup label="⚽ رياضة افتراضية">
+      <option value="Virtual Football">Virtual Football</option>
+      <option value="Virtual Tennis">Virtual Tennis</option>
+    </optgroup>
+    <optgroup label="🎮 ألعاب مصغرة">
+      <option value="777">777</option>
+      <option value="XO">XO</option>
+      <option value="Fruit Blast">Fruit Blast</option>
+    </optgroup>
+    <optgroup label="🧠 أخرى">
+      <option value="Crash X">Crash X</option>
+      <option value="Penalty Shootout">Penalty Shootout</option>
+      <option value="Goal">Goal</option>
+      <option value="Rock Paper Scissors">Rock Paper Scissors</option>
+    </optgroup>
+  </select>
 
-    <input type="file" id="imageInput" accept="image/*" />
-    <div id="result">نتائج التحليل ستظهر هنا...</div>
-  </div>
+  <br/>
+  <input type="file" id="imageInput" accept="image/*" />
+  <div id="result">📄 نتائج التحليل ستظهر هنا...</div>
 
-  <!-- Firebase إعداد -->
   <script>
+    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyCijdq8Ji8L9e3dGoHK72LaAUWsz_e5V6Y",
       authDomain: "web-ocr-ai.firebaseapp.com",
       projectId: "web-ocr-ai",
-      storageBucket: "web-ocr-ai.firebasestorage.app",
+      storageBucket: "web-ocr-ai.appspot.com",
       messagingSenderId: "847993614836",
       appId: "1:847993614836:web:a2b6e91c94426dd01549a1",
       measurementId: "G-TTQZPVWFL4"
     };
-    const app = firebase.initializeApp(firebaseConfig);
+    firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
-  </script>
 
-  <!-- تحليل OCR -->
-  <script>
-    function saveOCRResult(result, game) {
-      const timestamp = Date.now();
-      database.ref(`ocr-results/${game}/${timestamp}`).set({
-        text: result,
-        game: game,
-        time: new Date().toLocaleString()
-      });
-    }
-
+    // OCR والتحليل
     document.getElementById('imageInput').addEventListener('change', function(e) {
       const file = e.target.files[0];
-      const selectedGame = document.getElementById("gameSelect").value;
+      const game = document.getElementById('gameSelect').value;
       const resultDiv = document.getElementById('result');
 
       if (!file) return;
 
-      resultDiv.innerHTML = "⏳ جاري تحليل الصورة ...";
+      resultDiv.innerHTML = "⏳ جاري تحليل الصورة...";
 
       Tesseract.recognize(
         file,
-        'ara',
-        { logger: m => console.log(m) }
+        'ara', // اللغة العربية
+        {
+          logger: m => console.log(m)
+        }
       ).then(({ data: { text } }) => {
-        resultDiv.innerHTML = `📄 <b>النص المستخرج:</b><br>${text}`;
-        saveOCRResult(text, selectedGame);
+        resultDiv.innerHTML = `<b>🎮 اللعبة:</b> ${game}<br><b>📄 النص المستخرج:</b><br>${text}`;
+        const timestamp = Date.now();
+        database.ref('ocr-results/' + timestamp).set({
+          game: game,
+          text: text,
+          time: new Date().toLocaleString()
+        });
       }).catch(err => {
         resultDiv.innerHTML = "❌ حدث خطأ أثناء التحليل.";
         console.error(err);
