@@ -10,6 +10,7 @@
       background: #f2f2f2;
       text-align: center;
       padding: 20px;
+      direction: rtl;
     }
     h1 {
       color: #2c3e50;
@@ -27,7 +28,7 @@
       border-radius: 8px;
       box-shadow: 0 0 5px rgba(0,0,0,0.1);
       margin-top: 20px;
-      direction: rtl;
+      text-align: right;
     }
   </style>
 
@@ -43,11 +44,11 @@
 
   <label for="gameSelect">اختر اللعبة:</label>
   <select id="gameSelect">
-    <!-- نفس الخيارات كما هي -->
     <optgroup label="🎯 Crash Games">
       <option value="Aviator">Aviator</option>
       <option value="JetX">JetX</option>
       <option value="Zeppelin">Zeppelin</option>
+      <option value="Crash X">Crash X</option>
     </optgroup>
     <optgroup label="💣 ألعاب الألغام">
       <option value="Mines">Mines</option>
@@ -101,7 +102,7 @@
   <div id="result">📄 نتائج التحليل ستظهر هنا...</div>
 
   <script>
-    // Firebase config
+    // إعداد Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyCijdq8Ji8L9e3dGoHK72LaAUWsz_e5V6Y",
       authDomain: "web-ocr-ai.firebaseapp.com",
@@ -114,72 +115,119 @@
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
-    // ✅ التحليل الذكي بعد OCR
+    // دالة التوصيات الذكية لكل لعبة
     function analyzeGameText(game, text) {
       let recommendation = "🧠 جاري تطوير التوصيات لهذه اللعبة...";
       const lowerText = text.toLowerCase();
 
-      if (game === "Aviator") {
-        const matches = lowerText.match(/(\d+(\.\d+)?)(x)/g);
+      // Crash Games
+      if (["Aviator","JetX","Zeppelin","Crash X"].includes(game)) {
+        const matches = lowerText.match(/(\d+(\.\d+)?)[x×]/g);
         if (matches && matches.length > 3) {
-          const last = parseFloat(matches[matches.length - 1]);
-          const prev = parseFloat(matches[matches.length - 2]);
-          const trend = last > prev ? "تصاعدي 🔺" : "تنازلي 🔻";
-          recommendation = `📈 النمط الحالي: ${trend}<br>🎯 التوصية: انتظر مضاعفة مرتفعة ثم ادخل بقيمة صغيرة.`;
+          const last = parseFloat(matches.pop());
+          const avg = matches.slice(-5).reduce((s,v) => s + parseFloat(v), 0) / Math.min(matches.length,5);
+          if (last < 1.5) recommendation = '🔻 موجة منخفضة، انتظر قفزات أعلى.';
+          else if (avg > 2.0) recommendation = '🚀 متوسط مرتفع، جولة بمضاعف متوسط مناسبة.';
+          else recommendation = '⏳ راقب النتائج قليلاً.';
+        } else {
+          recommendation = '📊 بيانات غير كافية للتوصية.';
         }
       }
-
-      else if (game === "Mines") {
-        if (lowerText.includes("bomb") || lowerText.includes("mine")) {
-          recommendation = "💣 اللعبة تحتوي على ألغام — جرب النقر من المنتصف أولًا.";
-        }
+      // Mines Games
+      else if (["Mines","Safe Box","Gold Mines"].includes(game)) {
+        const bombs = lowerText.match(/\b[0-9]{1,2}\b/g) || [];
+        if (bombs.length > 5) {
+          const safeCount = bombs.filter(n=>parseInt(n)<=3).length;
+          recommendation = safeCount>=3
+            ? '✅ ابدأ من الزوايا.'
+            : '⚠️ جرب نمط 2-2-1 من الوسط.';
+        } else recommendation = '📄 وفر لقطة بنصائح أكثر.';
+      }
+      // Wheel Games
+      else if (["Wheel of Fortune","Mega Wheel","Spaceman"].includes(game)) {
+        const highs = lowerText.match(/\b(40|50|100)\b/g);
+        recommendation = highs && highs.length>0
+          ? '🔁 جوائز كبيرة، انتظر دورة.'
+          : '💫 فرصة لربح الآن.';
+      }
+      // Casino Games
+      else if (game==="Blackjack") {
+        if (lowerText.includes("21")||lowerText.includes("blackjack"))
+          recommendation = '🃏 اقتربت من 21، توقف عن السحب.';
+        else if (lowerText.includes("bust"))
+          recommendation = '💥 تجاوزت 21، انتبه للجولة القادمة.';
+        else recommendation = '📈 جرب جولة خفيفة، راقب الأوراق.';
+      }
+      else if (["Andar Bahar","Teen Patti","Baccarat","Dragon Tiger"].includes(game)) {
+        recommendation = '🧠 يُحلَّل قريباً بناءً على أنماط اللعب المتكررة.';
+      }
+      // Dice Games
+      else if (["Dice","HiLo","Sic Bo"].includes(game)) {
+        const nums = lowerText.match(/\b\d{1,2}\b/g) || [];
+        if (nums.length>=3) {
+          const avg = nums.slice(-3).reduce((a,b)=>a+parseInt(b),0)/3;
+          recommendation = avg>50
+            ? '🎲 الأرقام عالية، حاول على منخفض.'
+            : '🎲 الأرقام منخفضة، حاول مرتفع.';
+        } else recommendation = '📊 غير كافٍ لتحليل النرد.';
+      }
+      // Plinko Games
+      else if (["Plinko Classic","Plinko X"].includes(game)) {
+        recommendation = lowerText.includes("risk")
+          ? '🔻 مخاطرة مرتفعة، اختر متوسط.'
+          : '🧱 جرب مسار مائل لفرصة أفضل.';
+      }
+      // Racing Games
+      else if (["Horse Racing","Dog Racing"].includes(game)) {
+        recommendation = '🏁 محلل البيانات قيد التطوير لهذه السباقات.';
+      }
+      // Virtual Sports
+      else if (["Virtual Football","Virtual Tennis"].includes(game)) {
+        recommendation = '⚽ تحليل المباريات مقدم لاحقاً.';
+      }
+      // Mini Games
+      else if (["777","XO","Fruit Blast"].includes(game)) {
+        recommendation = lowerText.includes("win")||lowerText.includes("ربحت")
+          ? '🍒 فوز مؤخر، فرصة ضئيلة الآن.'
+          : '🍀 لم يفز أحد، جرب الجولة القادمة.';
+      }
+      // Other Games
+      else if (game==="Penalty Shootout") {
+        recommendation = '🥅 حاول اختيار الزاوية الأقل ظهوراً.';
+      }
+      else if (game==="Goal") {
+        recommendation = '⚽ اختر زاوية مختلفة للهدف.';
+      }
+      else if (game==="Rock Paper Scissors") {
+        recommendation = '✊📄✌️ تجنب التكرار، غيّر اختيارك.';
       }
 
-      else if (game === "Dice") {
-        const numbers = text.match(/\b\d+\b/g);
-        if (numbers && numbers.length > 4) {
-          const avg = numbers.reduce((a, b) => a + parseInt(b), 0) / numbers.length;
-          recommendation = avg > 50 ? "🎲 الأرقام مرتفعة — جرب العب على +50." : "🎲 الأرقام منخفضة — جرب العب على -50.";
-        }
-      }
-
-      // ألعاب أخرى يمكن تطوير تحليلها لاحقًا
       return recommendation;
     }
 
-    // OCR والتحليل
+    // OCR + تحليل
     document.getElementById('imageInput').addEventListener('change', function(e) {
       const file = e.target.files[0];
       const game = document.getElementById('gameSelect').value;
       const resultDiv = document.getElementById('result');
-
       if (!file) return;
 
       resultDiv.innerHTML = "⏳ جاري تحليل الصورة...";
-
-      Tesseract.recognize(
-        file,
-        'ara', // اللغة العربية
-        {
-          logger: m => console.log(m)
-        }
-      ).then(({ data: { text } }) => {
-        const timestamp = Date.now();
-        const recommendation = analyzeGameText(game, text);
-
+      Tesseract.recognize(file, 'ara', { logger: m=>console.log(m) })
+      .then(({ data: { text } }) => {
+        const rec = analyzeGameText(game, text);
         resultDiv.innerHTML = `
           <b>🎮 اللعبة:</b> ${game}<br>
           <b>📄 النص المستخرج:</b><br>${text}<hr>
-          <b>🤖 التوصية الذكية:</b><br>${recommendation}
+          <b>🤖 التوصية الذكية:</b><br>${rec}
         `;
-
-        database.ref('ocr-results/' + timestamp).set({
-          game: game,
-          text: text,
-          recommendation: recommendation,
-          time: new Date().toLocaleString()
+        // حفظ في Firebase
+        const ts = Date.now();
+        database.ref('ocr-results/'+ts).set({
+          game, text, recommendation: rec, time: new Date().toLocaleString()
         });
-      }).catch(err => {
+      })
+      .catch(err => {
         resultDiv.innerHTML = "❌ حدث خطأ أثناء التحليل.";
         console.error(err);
       });
