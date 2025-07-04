@@ -22,7 +22,7 @@
       border: 1px solid #ccc;
       font-size: 16px;
     }
-    #result {
+    #result, #aiStatus {
       background: white;
       padding: 15px;
       border-radius: 8px;
@@ -90,7 +90,6 @@
       <option value="Fruit Blast">Fruit Blast</option>
     </optgroup>
     <optgroup label="🧠 أخرى">
-      <option value="Crash X">Crash X</option>
       <option value="Penalty Shootout">Penalty Shootout</option>
       <option value="Goal">Goal</option>
       <option value="Rock Paper Scissors">Rock Paper Scissors</option>
@@ -101,16 +100,17 @@
   <input type="file" id="imageInput" accept="image/*" />
   <div id="result">📄 نتائج التحليل ستظهر هنا...</div>
 
+  <!-- 🔮 حالة الذكاء -->
+  <div id="aiStatus">
+    <b>📊 ذكاء النظام الذاتي:</b><br>
+    <div id="aiStrength">⚙️ جاري تحميل قوة الذكاء...</div>
+    <div id="aiModules">📦 مكونات الذكاء قيد التحديث...</div>
+    <div id="aiUpdate">🕓 آخر تحديث: جاري التحميل...</div>
+  </div>
+
   <script>
     // إعداد Firebase
     const firebaseConfig = {
-<!-- 🧠 قسم ذكاء سحابي -->
-<div id="aiStatus" style="margin-top: 30px; background: #ffffff; padding: 15px; border-radius: 8px; box-shadow: 0 0 5px rgba(0,0,0,0.1); direction: rtl;">
-  <b>📊 ذكاء النظام الذاتي:</b><br>
-  <div id="aiStrength">⚙️ جاري تحميل قوة الذكاء...</div>
-  <div id="aiModules">📦 مكونات الذكاء قيد التحديث...</div>
-  <div id="aiUpdate">🕓 آخر تحديث: جاري التحميل...</div>
-</div>
       apiKey: "AIzaSyCijdq8Ji8L9e3dGoHK72LaAUWsz_e5V6Y",
       authDomain: "web-ocr-ai.firebaseapp.com",
       projectId: "web-ocr-ai",
@@ -122,12 +122,11 @@
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
-    // دالة التوصيات الذكية لكل لعبة
+    // تحليل النص والتوصيات
     function analyzeGameText(game, text) {
       let recommendation = "🧠 جاري تطوير التوصيات لهذه اللعبة...";
       const lowerText = text.toLowerCase();
 
-      // Crash Games
       if (["Aviator","JetX","Zeppelin","Crash X"].includes(game)) {
         const matches = lowerText.match(/(\d+(\.\d+)?)[x×]/g);
         if (matches && matches.length > 3) {
@@ -140,7 +139,6 @@
           recommendation = '📊 بيانات غير كافية للتوصية.';
         }
       }
-      // Mines Games
       else if (["Mines","Safe Box","Gold Mines"].includes(game)) {
         const bombs = lowerText.match(/\b[0-9]{1,2}\b/g) || [];
         if (bombs.length > 5) {
@@ -150,14 +148,12 @@
             : '⚠️ جرب نمط 2-2-1 من الوسط.';
         } else recommendation = '📄 وفر لقطة بنصائح أكثر.';
       }
-      // Wheel Games
       else if (["Wheel of Fortune","Mega Wheel","Spaceman"].includes(game)) {
         const highs = lowerText.match(/\b(40|50|100)\b/g);
         recommendation = highs && highs.length>0
           ? '🔁 جوائز كبيرة، انتظر دورة.'
           : '💫 فرصة لربح الآن.';
       }
-      // Casino Games
       else if (game==="Blackjack") {
         if (lowerText.includes("21")||lowerText.includes("blackjack"))
           recommendation = '🃏 اقتربت من 21، توقف عن السحب.';
@@ -168,7 +164,6 @@
       else if (["Andar Bahar","Teen Patti","Baccarat","Dragon Tiger"].includes(game)) {
         recommendation = '🧠 يُحلَّل قريباً بناءً على أنماط اللعب المتكررة.';
       }
-      // Dice Games
       else if (["Dice","HiLo","Sic Bo"].includes(game)) {
         const nums = lowerText.match(/\b\d{1,2}\b/g) || [];
         if (nums.length>=3) {
@@ -178,27 +173,22 @@
             : '🎲 الأرقام منخفضة، حاول مرتفع.';
         } else recommendation = '📊 غير كافٍ لتحليل النرد.';
       }
-      // Plinko Games
       else if (["Plinko Classic","Plinko X"].includes(game)) {
         recommendation = lowerText.includes("risk")
           ? '🔻 مخاطرة مرتفعة، اختر متوسط.'
           : '🧱 جرب مسار مائل لفرصة أفضل.';
       }
-      // Racing Games
       else if (["Horse Racing","Dog Racing"].includes(game)) {
         recommendation = '🏁 محلل البيانات قيد التطوير لهذه السباقات.';
       }
-      // Virtual Sports
       else if (["Virtual Football","Virtual Tennis"].includes(game)) {
         recommendation = '⚽ تحليل المباريات مقدم لاحقاً.';
       }
-      // Mini Games
       else if (["777","XO","Fruit Blast"].includes(game)) {
         recommendation = lowerText.includes("win")||lowerText.includes("ربحت")
           ? '🍒 فوز مؤخر، فرصة ضئيلة الآن.'
           : '🍀 لم يفز أحد، جرب الجولة القادمة.';
       }
-      // Other Games
       else if (game==="Penalty Shootout") {
         recommendation = '🥅 حاول اختيار الزاوية الأقل ظهوراً.';
       }
@@ -212,7 +202,7 @@
       return recommendation;
     }
 
-    // OCR + تحليل
+    // قراءة الصورة وتحليلها
     document.getElementById('imageInput').addEventListener('change', function(e) {
       const file = e.target.files[0];
       const game = document.getElementById('gameSelect').value;
@@ -239,38 +229,40 @@
         console.error(err);
       });
     });
+
+    // تحميل الذكاء العالمي
+    function fetchGlobalAIModel() {
+      const aiStrength = document.getElementById("aiStrength");
+      const aiModules = document.getElementById("aiModules");
+      const aiUpdate = document.getElementById("aiUpdate");
+
+      database.ref('ai-model/global').once('value').then(snapshot => {
+        const data = snapshot.val();
+
+        if (data) {
+          aiStrength.innerHTML = `🧠 قوة الذكاء الذاتي: <b>${data.totalStrength || 0}%</b>`;
+          aiUpdate.innerHTML = `🕓 آخر تحديث عالمي: ${data.lastUpdated || 'غير معروف'}`;
+
+          if (data.modules) {
+            let modulesHTML = "";
+            for (let [key, value] of Object.entries(data.modules)) {
+              modulesHTML += `✅ ${key}: <b>${value}%</b><br>`;
+            }
+            aiModules.innerHTML = modulesHTML;
+          } else {
+            aiModules.innerHTML = "📦 لا توجد بيانات مكونات بعد.";
+          }
+        } else {
+          aiStrength.innerHTML = "❌ لا توجد بيانات ذكاء سحابي حالياً.";
+        }
+      }).catch(err => {
+        aiStrength.innerHTML = "❌ خطأ في تحميل الذكاء السحابي.";
+        console.error(err);
+      });
+    }
+
+    // التحديث عند تحميل الصفحة
+    window.addEventListener('load', fetchGlobalAIModel);
   </script>
 </body>
 </html>
-function fetchGlobalAIModel() {
-  const aiStrength = document.getElementById("aiStrength");
-  const aiModules = document.getElementById("aiModules");
-  const aiUpdate = document.getElementById("aiUpdate");
-
-  database.ref('ai-model/global').once('value').then(snapshot => {
-    const data = snapshot.val();
-
-    if (data) {
-      aiStrength.innerHTML = `🧠 قوة الذكاء الذاتي: <b>${data.totalStrength || 0}%</b>`;
-      aiUpdate.innerHTML = `🕓 آخر تحديث عالمي: ${data.lastUpdated || 'غير معروف'}`;
-
-      if (data.modules) {
-        let modulesHTML = "";
-        for (let [key, value] of Object.entries(data.modules)) {
-          modulesHTML += `✅ ${key}: <b>${value}%</b><br>`;
-        }
-        aiModules.innerHTML = modulesHTML;
-      } else {
-        aiModules.innerHTML = "📦 لا توجد بيانات مكونات بعد.";
-      }
-    } else {
-      aiStrength.innerHTML = "❌ لا توجد بيانات ذكاء سحابي حالياً.";
-    }
-  }).catch(err => {
-    aiStrength.innerHTML = "❌ خطأ في تحميل الذكاء السحابي.";
-    console.error(err);
-  });
-}
-
-// ✅ تشغيل التحديث عند تشغيل الصفحة
-window.addEventListener('load', fetchGlobalAIModel);
