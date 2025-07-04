@@ -2,15 +2,14 @@
 <html lang="ar">
 <head>
   <meta charset="UTF-8" />
+  <title>🔍 نظام Mines الذكي - Web OCR</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>نظام Web OCR الذكي - تحليل لعبة Crash</title>
   <style>
     body {
       font-family: 'Tajawal', sans-serif;
-      background: #f2f2f2;
+      background: #f8f9fa;
       text-align: center;
       padding: 20px;
-      direction: rtl;
     }
     h1 {
       color: #2c3e50;
@@ -18,7 +17,7 @@
     input[type="file"] {
       margin: 20px 0;
     }
-    #result, #prediction {
+    #result {
       background: white;
       padding: 15px;
       border-radius: 8px;
@@ -26,88 +25,70 @@
       margin-top: 20px;
       direction: rtl;
     }
-    .safe { color: green; font-weight: bold; }
-    .risky { color: red; font-weight: bold; }
+    .safe {
+      color: green;
+      font-weight: bold;
+    }
+    .danger {
+      color: red;
+      font-weight: bold;
+    }
   </style>
 
   <!-- مكتبة OCR -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.5/dist/tesseract.min.js"></script>
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-database-compat.js"></script>
 </head>
-
 <body>
-  <h1>🔍 نظام Web OCR الذكي - تحليل لعبة Crash</h1>
+  <h1>💣 نظام Mines الذكي</h1>
 
   <input type="file" id="imageInput" accept="image/*" />
-  <div id="result">📤 نتائج تحليل الصورة ستظهر هنا</div>
-  <div id="prediction">📊 تحليل الجولة القادمة سيظهر هنا</div>
+  <div id="result">📸 قم برفع صورة من لعبة Mines لبدء التحليل...</div>
 
   <script>
-    // إعداد Firebase
-    const firebaseConfig = {
-      apiKey: "AIzaSyCijdq8Ji8L9e3dGoHK72LaAUWsz_e5V6Y",
-      authDomain: "web-ocr-ai.firebaseapp.com",
-      projectId: "web-ocr-ai",
-      storageBucket: "web-ocr-ai.firebasestorage.app",
-      messagingSenderId: "847993614836",
-      appId: "1:847993614836:web:a2b6e91c94426dd01549a1",
-      measurementId: "G-TTQZPVWFL4"
-    };
+    // تحليل Mines الذكي
+    function analyzeMinesText(text) {
+      const resultDiv = document.getElementById('result');
+      const rows = text.split('\n').filter(line => line.trim() !== "");
+      
+      const safeCells = [];
+      const dangerCells = [];
 
-    firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
-
-    // تحليل النص لاستخراج أرقام Crash
-    function extractCrashValues(text) {
-      const regex = /(\d+(\.\d+)?)x/g;
-      const matches = [...text.matchAll(regex)].map(m => parseFloat(m[1]));
-      return matches;
-    }
-
-    // تحليل الأنماط وتقديم التوصية
-    function analyzeCrashData(values) {
-      if (values.length < 3) return "🔄 بحاجة إلى مزيد من البيانات...";
-      const avg = values.reduce((a,b) => a+b, 0) / values.length;
-      const last = values[values.length - 1];
-      if (last < 1.5 && avg < 2.0) {
-        return `<span class="safe">✅ الجولة القادمة آمنة غالبًا</span>`;
-      } else if (last > 3.0) {
-        return `<span class="risky">⚠️ احتمالية انهيار مبكر! كن حذرًا</span>`;
-      } else {
-        return `🔍 لا يوجد نمط واضح، تابع المراقبة...`;
-      }
-    }
-
-    // حفظ النتائج في Firebase
-    function saveOCRResult(result) {
-      const timestamp = Date.now();
-      database.ref('ocr-crash/' + timestamp).set({
-        text: result,
-        time: new Date().toLocaleString()
+      rows.forEach((line, rowIndex) => {
+        const cells = line.split('');
+        cells.forEach((char, colIndex) => {
+          const pos = `(${rowIndex+1}, ${colIndex+1})`;
+          if (char === '💣' || char === 'X') {
+            dangerCells.push(pos);
+          } else if (char === '.' || char === '0' || char === '⬜') {
+            safeCells.push(pos);
+          }
+        });
       });
+
+      // عرض التوصيات
+      resultDiv.innerHTML = `
+        <b>✅ أماكن الضغط الآمن:</b><br>
+        <span class="safe">${safeCells.join(', ')}</span><br><br>
+        <b>⚠️ الأماكن الخطيرة (محتملة):</b><br>
+        <span class="danger">${dangerCells.join(', ')}</span>
+      `;
     }
 
-    // عند اختيار صورة
     document.getElementById('imageInput').addEventListener('change', function(e) {
       const file = e.target.files[0];
       if (!file) return;
 
       const resultDiv = document.getElementById('result');
-      const predictionDiv = document.getElementById('prediction');
-      resultDiv.innerHTML = "⏳ جاري تحليل الصورة...";
-      predictionDiv.innerHTML = "";
+      resultDiv.innerHTML = "⏳ جاري التحليل...";
 
-      Tesseract.recognize(file, 'eng', {
-        logger: m => console.log(m)
-      }).then(({ data: { text } }) => {
-        resultDiv.innerHTML = `<b>النص المستخرج:</b><br>${text}`;
-        saveOCRResult(text);
-
-        const values = extractCrashValues(text);
-        predictionDiv.innerHTML = `<b>📈 قيم الجولات:</b> ${values.join(', ')}<br><b>🔮 التوصية:</b><br>` + analyzeCrashData(values);
+      Tesseract.recognize(
+        file,
+        'eng',
+        { logger: m => console.log(m) }
+      ).then(({ data: { text } }) => {
+        console.log("OCR Result:", text);
+        analyzeMinesText(text);
       }).catch(err => {
         resultDiv.innerHTML = "❌ حدث خطأ أثناء التحليل.";
         console.error(err);
