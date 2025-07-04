@@ -1,126 +1,115 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar">
 <head>
   <meta charset="UTF-8">
-  <title>الذكاء البصري - Web OCR + تحليل ذكي</title>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.4/dist/tesseract.min.js"></script>
+  <title>النسخة الذكية Web OCR</title>
   <style>
-    body { font-family: 'Cairo', sans-serif; text-align: center; padding: 20px; background: #f4f4f4; }
-    h1 { color: #2c3e50; }
-    input[type=file] { margin: 20px; }
-    #output, #aiResult {
-      white-space: pre-wrap;
-      background: #fff;
-      padding: 15px;
-      border-radius: 10px;
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+      direction: rtl;
+    }
+    input[type="file"] {
+      margin: 20px 0;
+    }
+    #result {
       margin-top: 20px;
+      white-space: pre-wrap;
+      background-color: #f5f5f5;
+      padding: 15px;
+      border-radius: 8px;
+      font-size: 16px;
       text-align: right;
     }
-    #loading { display: none; color: green; font-weight: bold; }
-    #aiResult.success { background: #dff0d8; color: #3c763d; font-weight: bold; }
-    #aiResult.warning { background: #fcf8e3; color: #8a6d3b; font-weight: bold; }
-    #aiResult.danger { background: #f2dede; color: #a94442; font-weight: bold; }
   </style>
 </head>
 <body>
+  <h1>📷 النسخة الذكية لتحليل نتائج الألعاب - Web OCR</h1>
+  <p>ارفع صورة تحتوي على نتائج من لعبة في Linebet أو 1xBet</p>
+  <input type="file" accept="image/*" onchange="handleImage(event)">
+  <div id="result">⚙️ في انتظار صورة لتحليلها...</div>
 
-  <h1>📷 Web OCR + الذكاء التحليلي</h1>
-  <p>ارفع صورة تحتوي على نتائج لعبة، وسنقوم بتحليلها ذكيًا.</p>
-
-  <input type="file" id="imageInput" accept="image/*">
-  <div id="loading">🔍 جارٍ التحليل الذكي...</div>
-
-  <div id="output">📄 النص المستخرج سيظهر هنا.</div>
-  <div id="aiResult">🤖 التحليل الذكي سيظهر هنا.</div>
+  <!-- مكتبة OCR -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
 
   <script>
-    const imageInput = document.getElementById('imageInput');
-    const outputDiv = document.getElementById('output');
-    const aiResultDiv = document.getElementById('aiResult');
-    const loading = document.getElementById('loading');
+    const resultDiv = document.getElementById('result');
 
-    imageInput.addEventListener('change', () => {
-      const file = imageInput.files[0];
+    function handleImage(event) {
+      const file = event.target.files[0];
       if (!file) return;
 
-      loading.style.display = 'block';
-      outputDiv.textContent = '';
-      aiResultDiv.textContent = '';
-      aiResultDiv.className = '';
+      resultDiv.textContent = '📤 جارٍ تحليل الصورة...';
 
-      Tesseract.recognize(
-        file,
-        'ara+eng',
-        { logger: m => console.log(m) }
-      ).then(({ data: { text } }) => {
-        loading.style.display = 'none';
+      Tesseract.recognize(file, 'eng', {
+        logger: m => console.log(m)
+      }).then(({ data: { text } }) => {
         const cleanedText = text.trim();
-        outputDiv.textContent = cleanedText || 'لم يتم التعرف على أي نص.';
+        resultDiv.textContent = '🧠 النص المُستخرج:\n' + cleanedText;
 
-        // 🧠 حفظ النتيجة في التخزين المحلي (Reinforcement AI)
-        storeInHistory(cleanedText);
+        // تحليل ذكي مبدئي محلي (بسيط)
+        const aiResultDiv = document.createElement('div');
+        aiResultDiv.style.marginTop = '20px';
+        aiResultDiv.style.color = '#006600';
 
-        // 🤖 تحليل النص
-        const decision = analyzeText(cleanedText);
-        aiResultDiv.textContent = decision.message;
-        aiResultDiv.className = decision.level;
-      }).catch(err => {
-        loading.style.display = 'none';
-        outputDiv.textContent = 'حدث خطأ أثناء التحليل: ' + err.message;
-      });
-    });
-
-    // 🧠 Decision AI
-    function analyzeText(text) {
-      const lower = text.toLowerCase();
-      const history = getHistory();
-
-      // تحليل Crash
-      if (lower.includes("crash") || lower.includes("x")) {
-        let crashValues = lower.match(/([0-9]+\.[0-9]+)x/g) || [];
-        let avg = crashValues.map(v => parseFloat(v)).reduce((a,b) => a + b, 0) / (crashValues.length || 1);
-
-        if (avg < 1.5) {
-          return { message: "📉 التحليل: معدل منخفض - تجنب اللعب الآن.", level: "danger" };
-        } else if (avg < 3.0) {
-          return { message: "📈 التحليل: متوسط - تابع الحذر.", level: "warning" };
+        if (cleanedText.includes('win') || cleanedText.includes('Victory') || cleanedText.includes('x2')) {
+          aiResultDiv.textContent = '✅ تحليل AI: احتمال كبير أن النتيجة كانت فوزًا.';
+        } else if (cleanedText.includes('lose') || cleanedText.includes('fail') || cleanedText.includes('x0')) {
+          aiResultDiv.textContent = '❌ تحليل AI: هذه النتيجة تشير إلى خسارة.';
         } else {
-          return { message: "🚀 التحليل: معدل عالي! راقب الفرصة القادمة.", level: "success" };
+          aiResultDiv.textContent = '🤖 تحليل AI: لم يتم التعرّف بدقة على النتيجة.';
         }
-      }
 
-      // تحليل Mines
-      if (lower.includes("mines") || lower.includes("bomb") || lower.includes("💣")) {
-        return { message: "💣 تم الكشف عن لعبة Mines. جاري التعلّم من النتائج...", level: "warning" };
-      }
+        resultDiv.appendChild(aiResultDiv);
 
-      // تحليل عام
-      if (lower.length < 10) {
-        return { message: "📭 لم يتم التعرف على نتائج مفهومة. حاول بصورة أوضح.", level: "danger" };
-      }
+        // إرسال إلى Cloud AI
+        syncToCloud(cleanedText).then(cloudResponse => {
+          if (cloudResponse && cloudResponse.suggestion) {
+            const cloudDiv = document.createElement('div');
+            cloudDiv.style.marginTop = '15px';
+            cloudDiv.style.color = '#000066';
+            cloudDiv.textContent = '🌐 توصية سحابية: ' + cloudResponse.suggestion;
+            resultDiv.appendChild(cloudDiv);
+          }
+        });
 
-      return { message: "🔄 جارٍ التعلم من النمط الجديد...", level: "warning" };
-    }
-
-    // 🧠 تخزين التاريخ محليًا (Reinforcement AI)
-    function storeInHistory(newText) {
-      const history = getHistory();
-      history.push({ text: newText, timestamp: new Date().toISOString() });
-      localStorage.setItem('ocr_history', JSON.stringify(history.slice(-50))); // حفظ آخر 50 فقط
-    }
-
-    function getHistory() {
-      return JSON.parse(localStorage.getItem('ocr_history') || '[]');
-    }
-     // ☁️ Cloud AI: أرسل النص إلى السيرفر العالمي
-    import('./cloud-ai.js').then(module => {
-      module.syncToCloud(cleanedText).then(cloudResponse => {
-        if (cloudResponse && cloudResponse.suggestion) {
-          aiResultDiv.textContent += "\n🌐 توصية سحابية: " + cloudResponse.suggestion;
-        }
+      }).catch(err => {
+        resultDiv.textContent = '❌ فشل في قراءة الصورة:\n' + err.message;
       });
-    });
- </script>
+    }
 
+    // Cloud AI المدمج داخل الصفحة
+    function getDeviceId() {
+      let id = localStorage.getItem('cloud_device_id');
+      if (!id) {
+        id = 'device-' + Math.random().toString(36).substring(2, 10);
+        localStorage.setItem('cloud_device_id', id);
+      }
+      return id;
+    }
+
+    async function syncToCloud(ocrText) {
+      try {
+        const payload = {
+          text: ocrText,
+          deviceId: getDeviceId(),
+          timestamp: new Date().toISOString()
+        };
+
+        const res = await fetch('https://api.cloud-ai-linebet.net/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const json = await res.json();
+        return json;
+      } catch (err) {
+        console.warn("⛔ فشل الاتصال بالسيرفر السحابي:", err.message);
+        return { status: "offline", suggestion: "تعذّر الاتصال بالسحابة." };
+      }
+    }
+  </script>
 </body>
 </html>
