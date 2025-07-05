@@ -12,39 +12,51 @@
       padding: 20px;
       text-align: center;
     }
-    h1 { color: #2c3e50; }
+    h1 {
+      color: #2c3e50;
+      margin-bottom: 1rem;
+    }
     select, input[type="file"], button {
-      margin: 10px;
-      padding: 10px;
-      font-size: 16px;
+      margin: 0.5rem;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
       border-radius: 5px;
       border: 1px solid #ccc;
       cursor: pointer;
     }
-    #result, #aiStatus {
+    #result, #aiStatus, #liveResults {
       background: #fff;
       border-radius: 8px;
       box-shadow: 0 0 5px rgba(0,0,0,0.1);
-      padding: 15px;
-      margin-top: 20px;
+      padding: 1rem;
+      margin-top: 1.5rem;
       text-align: right;
-      line-height: 1.6;
+      line-height: 1.5;
     }
     #refreshBtn {
       background: #3498db;
       color: #fff;
       border: none;
     }
-    #refreshBtn:hover { background: #2980b9; }
-    #liveResults { margin-top: 30px; text-align: right; }
-    #liveResults ul { list-style: none; padding: 0; }
-    #liveResults li { margin-bottom: 5px; }
+    #refreshBtn:hover {
+      background: #2980b9;
+    }
+    #liveResults ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    #liveResults li {
+      margin-bottom: 0.5rem;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 0.25rem;
+    }
   </style>
 
-  <!-- OCR -->
+  <!-- مكتبة OCR -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.5/dist/tesseract.min.js"></script>
 
-  <!-- Firebase (Realtime DB) -->
+  <!-- Firebase Realtime Database -->
   <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-database-compat.js"></script>
 
@@ -53,7 +65,7 @@
 </head>
 
 <body>
-  <h1>🔍 نظام Web OCR الذكي لجميع ألعاب Linebet / 1xBet</h1>
+  <h1>🔍 نظام Web OCR الذكي لألعاب Linebet / 1xBet</h1>
 
   <!-- رفع الصورة -->
   <input type="file" id="imageInput" accept="image/*" />
@@ -66,6 +78,7 @@
       <option value="Aviator">Aviator</option>
       <option value="JetX">JetX</option>
       <option value="Zeppelin">Zeppelin</option>
+      <option value="Crash X">Crash X</option>
     </optgroup>
     <optgroup label="💣 Mines">
       <option value="Mines">Mines</option>
@@ -80,92 +93,143 @@
       <option value="HiLo">HiLo</option>
       <option value="Sic Bo">Sic Bo</option>
     </optgroup>
-    <!-- أضف بقية الألعاب بحسب حاجتك -->
+    <!-- أضف بقية الألعاب هنا -->
   </select>
 
-  <!-- أزرار التحكم -->
+  <!-- أزرار العمل -->
   <button id="analyzeBtn">🔍 تحليل الصورة</button>
   <button id="refreshBtn">🔄 تحديث يدوي</button>
 
   <!-- عرض النتيجة -->
   <div id="result">📄 نتائج التحليل ستظهر هنا...</div>
 
-  <!-- لوحة حالة الذكاء -->
+  <!-- حالة الذكاء الاصطناعي -->
   <div id="aiStatus">
     <h3>⚙️ حالة الذكاء الاصطناعي</h3>
-    <div id="aiStrength">🔄 جاري تحميل القوة...</div>
-    <div id="aiModules">🔄 جاري تحميل مكونات...</div>
+    <div id="aiStrength">🔄 جاري تحميل قوة النظام...</div>
+    <div id="aiModules">🔄 جاري تحميل مكونات الذكاء...</div>
     <div id="aiUpdate">🔄 آخر تحديث: جاري التحميل...</div>
   </div>
 
-  <!-- عرض آخر التوصيات عالمياً -->
+  <!-- آخر التوصيات عالمياً -->
   <div id="liveResults">
     <h3>📊 آخر التوصيات عالمياً</h3>
     <ul id="resultsList"></ul>
   </div>
 
-<!-- استدعاء الموديولات -->
-<script type="module">
-  import { aiModules } from './aiModules.js';  // تأكد من أن المسار صحيح
+  <!-- استدعاء الموديولات وتشغيل المنطق -->
+  <script type="module">
+    // تهيئة Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyCijdq8Ji8L9e3dGoHK72LaAUWsz_e5V6Y",
+      authDomain: "web-ocr-ai.firebaseapp.com",
+      projectId: "web-ocr-ai",
+      storageBucket: "web-ocr-ai.appspot.com",
+      messagingSenderId: "847993614836",
+      appId: "1:847993614836:web:a2b6e91c94426dd01549a1",
+      measurementId: "G-TTQZPVWFL4"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
 
-  // تهيئة جميع المكونات المفعلة
-  aiModules.forEach(mod => {
-    if (mod.enabled && typeof mod.init === 'function') {
-      mod.init();
-    }
-  });
+    // استدعاء الموديولات
+    import { aiModules } from './aiModules.js';
 
-  // دالة لتشغيل كل analyze()
-  async function runAllAnalyzers(ctx) {
-    const out = {};
-    for (let mod of aiModules) {
-      if (!mod.enabled) continue;
-      try {
-        out[mod.name] = await mod.analyze(ctx);
-      } catch (e) {
-        console.error(`Error in ${mod.name}`, e);
+    // 1) تهيئة كل مكون مفعّل
+    aiModules.forEach(mod => {
+      if (mod.enabled && typeof mod.init === 'function') {
+        mod.init();
       }
-    }
-    return out;
-  }
-
-  // زرّ التحليل
-  document.getElementById('analyzeBtn').addEventListener('click', async () => {
-    const fileEl = document.getElementById('imageInput');
-    const game = document.getElementById('gameSelect').value;
-    if (!fileEl.files[0] || !game) return alert('اختر صورة ولعبة أولاً');
-    const file = fileEl.files[0];
-
-    // استخراج نص بـ Vision AI
-    const vision = aiModules.find(m => m.name === 'Vision AI');
-    const { text } = await vision.analyze({ file });
-
-    // تشغيل بقية المكونات
-    const results = await runAllAnalyzers({ file, text, game });
-
-    // بناء توصية مبدئية (مثال بسيط)
-    let recommendation = results['Pattern AI']?.patterns?.slice(-1)[0] || 'لا توجد أنماط';
-    if (results['Cloud AI Collective']?.globalRec) {
-      recommendation += ` | السحابي: ${results['Cloud AI Collective'].globalRec}`;
-    }
-
-    // عرض النتيجة
-    document.getElementById('result').innerHTML = `
-      <b>🎮 اللعبة:</b> ${game}<br>
-      <b>📄 النص المستخرج:</b><br><pre>${text}</pre><hr>
-      <b>🤖 التوصية النهائية:</b> ${recommendation}
-    `;
-
-    // حفظ عالمي
-    firebase.database().ref('gameResults').push({
-      game, recommendation, timestamp: Date.now()
     });
 
-    // تنبيه صوتي إذا كانت التوصية قوية
-    if (/فرصة/.test(recommendation)) {
-      document.getElementById('alertSound').play();
+    // 2) دالة تشغيل جميع analyze()
+    async function runAllAnalyzers(ctx) {
+      const outputs = {};
+      for (let mod of aiModules) {
+        if (!mod.enabled) continue;
+        try {
+          outputs[mod.name] = await mod.analyze(ctx);
+        } catch (err) {
+          console.error(`خطأ في ${mod.name}:`, err);
+        }
+      }
+      return outputs;
     }
-  });
-</script>
+
+    // 3) مراقبة حالة الذكاء السحابي (Realtime)
+    const statusRef = database.ref('ai-model/global');
+    statusRef.on('value', snap => {
+      const data = snap.val() || {};
+      document.getElementById('aiStrength').innerHTML =
+        `🧠 قوة النظام الذاتي: <b>${data.totalStrength||0}%</b>`;
+      document.getElementById('aiUpdate').innerText =
+        `🕓 آخر تحديث: ${data.lastUpdated||'---'}`;
+      if (data.modules) {
+        document.getElementById('aiModules').innerHTML =
+          Object.entries(data.modules)
+            .map(([k,v]) => `✅ ${k}: ${v}%`)
+            .join('<br>');
+      } else {
+        document.getElementById('aiModules').innerText = '📦 لا توجد بيانات مكونات.';
+      }
+    });
+
+    // 4) الاستماع لآخر التوصيات عالمياً
+    const liveRef = database.ref('gameResults').limitToLast(5);
+    liveRef.on('child_added', snap => {
+      const msg = snap.val();
+      const li = document.createElement('li');
+      li.textContent = `${msg.game} | ${msg.recommendation} | ${new Date(msg.timestamp).toLocaleTimeString()}`;
+      document.getElementById('resultsList').prepend(li);
+    });
+
+    // 5) زر تحليل الصورة
+    document.getElementById('analyzeBtn').onclick = async () => {
+      const fileEl = document.getElementById('imageInput');
+      const game = document.getElementById('gameSelect').value;
+      if (!fileEl.files[0] || !game) {
+        return alert('🛑 الرجاء اختيار صورة ولعبة أولاً.');
+      }
+      const file = fileEl.files[0];
+      document.getElementById('result').innerText = '⏳ جارِ التحليل...';
+
+      // Vision AI لاستخراج النص
+      const vision = aiModules.find(m=>m.name==='Vision AI');
+      const { text } = await vision.analyze({ file });
+
+      // تشغيل بقية المكونات
+      const results = await runAllAnalyzers({ file, text, game });
+
+      // بناء التوصية النهائية (مثال مبسط)
+      let recommendation = results['Pattern AI']?.patterns?.slice(-1)[0] || 'لا توجد أنماط';
+      if (results['Cloud AI Collective']?.globalRec) {
+        recommendation += ` | سحابي: ${results['Cloud AI Collective'].globalRec}`;
+      }
+
+      // عرض النتيجة
+      document.getElementById('result').innerHTML = `
+        <b>🎮 اللعبة:</b> ${game}<br>
+        <b>📄 النص المستخرج:</b><br><pre>${text}</pre><hr>
+        <b>🤖 التوصية النهائية:</b> ${recommendation}
+      `;
+
+      // حفظ التوصية عالمياً
+      database.ref('gameResults').push({
+        game,
+        recommendation,
+        timestamp: Date.now()
+      });
+
+      // تنبيه صوتي إذا كانت التوصية قوية
+      if (/فرصة/.test(recommendation)) {
+        document.getElementById('alertSound').play();
+      }
+    };
+
+    // 6) زر التحديث اليدوي
+    document.getElementById('refreshBtn').onclick = () => {
+      document.getElementById('aiStrength').innerText += ' 🔄';
+    };
+  </script>
 </body>
 </html>
