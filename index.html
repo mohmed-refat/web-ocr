@@ -8,121 +8,107 @@
     body {
       font-family: 'Tajawal', sans-serif;
       background: #f2f2f2;
-      text-align: center;
-      padding: 20px;
       direction: rtl;
+      padding: 20px;
+      text-align: center;
     }
-    h1 {
-      color: #2c3e50;
-    }
+    h1 { color: #2c3e50; }
     select, input[type="file"], button {
       margin: 10px;
       padding: 10px;
+      font-size: 16px;
       border-radius: 5px;
       border: 1px solid #ccc;
-      font-size: 16px;
+      cursor: pointer;
     }
     #result, #aiStatus {
-      background: white;
-      padding: 15px;
+      background: #fff;
       border-radius: 8px;
       box-shadow: 0 0 5px rgba(0,0,0,0.1);
+      padding: 15px;
       margin-top: 20px;
       text-align: right;
       line-height: 1.6;
     }
     #refreshBtn {
-      background-color: #3498db;
-      color: white;
+      background: #3498db;
+      color: #fff;
       border: none;
-      cursor: pointer;
     }
-    #refreshBtn:hover {
-      background-color: #2980b9;
-    }
+    #refreshBtn:hover { background: #2980b9; }
+    #liveResults { margin-top: 30px; text-align: right; }
+    #liveResults ul { list-style: none; padding: 0; }
+    #liveResults li { margin-bottom: 5px; }
   </style>
 
-  <!-- مكتبة OCR -->
+  <!-- OCR -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.5/dist/tesseract.min.js"></script>
 
-  <!-- Firebase -->
+  <!-- Firebase (Realtime DB) -->
   <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-database-compat.js"></script>
 
-  <!-- تنبيه صوتي -->
+  <!-- صوت التنبيه -->
   <audio id="alertSound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
 </head>
+
 <body>
   <h1>🔍 نظام Web OCR الذكي لجميع ألعاب Linebet / 1xBet</h1>
 
-  <label for="gameSelect">اختر اللعبة:</label>
+  <!-- رفع الصورة -->
+  <input type="file" id="imageInput" accept="image/*" />
+
+  <!-- اختيار اللعبة -->
   <select id="gameSelect">
+    <option value="">اختر اللعبة</option>
     <optgroup label="🎯 Crash Games">
+      <option value="Crash">Crash</option>
       <option value="Aviator">Aviator</option>
       <option value="JetX">JetX</option>
       <option value="Zeppelin">Zeppelin</option>
-      <option value="Crash X">Crash X</option>
     </optgroup>
-    <optgroup label="💣 ألعاب الألغام">
+    <optgroup label="💣 Mines">
       <option value="Mines">Mines</option>
       <option value="Safe Box">Safe Box</option>
       <option value="Gold Mines">Gold Mines</option>
     </optgroup>
-    <optgroup label="🎡 ألعاب العجلة">
-      <option value="Wheel of Fortune">Wheel of Fortune</option>
-      <option value="Mega Wheel">Mega Wheel</option>
-      <option value="Spaceman">Spaceman</option>
-    </optgroup>
-    <optgroup label="🎰 كازينو">
+    <optgroup label="🎰 Blackjack">
       <option value="Blackjack">Blackjack</option>
-      <option value="Andar Bahar">Andar Bahar</option>
-      <option value="Teen Patti">Teen Patti</option>
-      <option value="Baccarat">Baccarat</option>
-      <option value="Dragon Tiger">Dragon Tiger</option>
     </optgroup>
-    <optgroup label="🎲 ألعاب النرد">
+    <optgroup label="🎲 Dice">
       <option value="Dice">Dice</option>
       <option value="HiLo">HiLo</option>
       <option value="Sic Bo">Sic Bo</option>
     </optgroup>
-    <optgroup label="🧱 ألعاب Plinko">
-      <option value="Plinko Classic">Plinko Classic</option>
-      <option value="Plinko X">Plinko X</option>
-    </optgroup>
-    <optgroup label="🏁 سباقات افتراضية">
-      <option value="Horse Racing">Horse Racing</option>
-      <option value="Dog Racing">Dog Racing</option>
-    </optgroup>
-    <optgroup label="⚽ رياضة افتراضية">
-      <option value="Virtual Football">Virtual Football</option>
-      <option value="Virtual Tennis">Virtual Tennis</option>
-    </optgroup>
-    <optgroup label="🎮 ألعاب مصغرة">
-      <option value="777">777</option>
-      <option value="XO">XO</option>
-      <option value="Fruit Blast">Fruit Blast</option>
-    </optgroup>
-    <optgroup label="🧠 أخرى">
-      <option value="Penalty Shootout">Penalty Shootout</option>
-      <option value="Goal">Goal</option>
-      <option value="Rock Paper Scissors">Rock Paper Scissors</option>
-    </optgroup>
+    <!-- أضف بقية الألعاب بحسب حاجتك -->
   </select>
 
-  <br/>
-  <input type="file" id="imageInput" accept="image/*" />
+  <!-- أزرار التحكم -->
+  <button id="analyzeBtn">🔍 تحليل الصورة</button>
+  <button id="refreshBtn">🔄 تحديث يدوي</button>
+
+  <!-- عرض النتيجة -->
   <div id="result">📄 نتائج التحليل ستظهر هنا...</div>
 
-  <!-- 🔮 حالة الذكاء -->
+  <!-- لوحة حالة الذكاء -->
   <div id="aiStatus">
-    <b>📊 ذكاء النظام الذاتي:</b><br>
-    <div id="aiStrength">⚙️ جاري تحميل قوة الذكاء...</div>
-    <div id="aiModules">📦 مكونات الذكاء قيد التحديث...</div>
-    <div id="aiUpdate">🕓 آخر تحديث: جاري التحميل...</div>
+    <h3>⚙️ حالة الذكاء الاصطناعي</h3>
+    <div id="aiStrength">🔄 جاري تحميل القوة...</div>
+    <div id="aiModules">🔄 جاري تحميل مكونات...</div>
+    <div id="aiUpdate">🔄 آخر تحديث: جاري التحميل...</div>
   </div>
 
-  <script>
-    // إعداد Firebase
+  <!-- عرض آخر التوصيات عالمياً -->
+  <div id="liveResults">
+    <h3>📊 آخر التوصيات عالمياً</h3>
+    <ul id="resultsList"></ul>
+  </div>
+
+  <!-- استدعاء الموديولات -->
+  <script type="module">
+    import { aiModules } from './aiModules.js';
+
+    // Firebase init
     const firebaseConfig = {
       apiKey: "AIzaSyCijdq8Ji8L9e3dGoHK72LaAUWsz_e5V6Y",
       authDomain: "web-ocr-ai.firebaseapp.com",
@@ -135,206 +121,90 @@
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
-    // تحليل النص والتوصيات
-    function analyzeGameText(game, text) {
-      let recommendation = "🧠 جاري تطوير التوصيات لهذه اللعبة...";
-      const lowerText = text.toLowerCase();
+    // 1) init modules
+    aiModules.forEach(m => m.enabled && typeof m.init === 'function' && m.init());
 
-      if (["Aviator","JetX","Zeppelin","Crash X"].includes(game)) {
-        const matches = lowerText.match(/(\d+(\.\d+)?)[x×]/g);
-        if (matches && matches.length > 3) {
-          const last = parseFloat(matches.pop());
-          const avg = matches.slice(-5).reduce((s,v) => s + parseFloat(v), 0) / Math.min(matches.length,5);
-          if (last < 1.5) recommendation = '🔻 موجة منخفضة، انتظر قفزات أعلى.';
-          else if (avg > 2.0) recommendation = '🚀 متوسط مرتفع، جولة بمضاعف متوسط مناسبة.';
-          else recommendation = '⏳ راقب النتائج قليلاً.';
-        } else {
-          recommendation = '📊 بيانات غير كافية للتوصية.';
-        }
+    // 2) load cloud AI status (Realtime)
+    const statusRef = database.ref('ai-model/global');
+    statusRef.on('value', snap => {
+      const data = snap.val() || {};
+      document.getElementById('aiStrength').innerHTML =
+        `🧠 قوة النظام الذاتي: <b>${data.totalStrength||0}%</b>`;
+      document.getElementById('aiUpdate').innerText =
+        `🕓 آخر تحديث: ${data.lastUpdated||'---'}`;
+      if (data.modules) {
+        document.getElementById('aiModules').innerHTML =
+          Object.entries(data.modules)
+            .map(([k,v]) => `✅ ${k}: ${v}%`)
+            .join('<br>');
+      } else {
+        document.getElementById('aiModules').innerText = '📦 لا توجد بيانات مكونات.';
       }
-      else if (["Mines","Safe Box","Gold Mines"].includes(game)) {
-        const bombs = lowerText.match(/\b[0-9]{1,2}\b/g) || [];
-        if (bombs.length > 5) {
-          const safeCount = bombs.filter(n=>parseInt(n)<=3).length;
-          recommendation = safeCount>=3
-            ? '✅ ابدأ من الزوايا.'
-            : '⚠️ جرب نمط 2-2-1 من الوسط.';
-        } else recommendation = '📄 وفر لقطة بنصائح أكثر.';
-      }
-      else if (["Wheel of Fortune","Mega Wheel","Spaceman"].includes(game)) {
-        const highs = lowerText.match(/\b(40|50|100)\b/g);
-        recommendation = highs && highs.length>0
-          ? '🔁 جوائز كبيرة، انتظر دورة.'
-          : '💫 فرصة لربح الآن.';
-      }
-      else if (game==="Blackjack") {
-     <body>
-  <h1>📸 نظام Web OCR الذكي لتحليل ألعاب Linebet</h1>
-
-  <!-- رفع صورة -->
-  <input type="file" id="imageInput" accept="image/*" />
-
-  <!-- اختيار اللعبة -->
-  <select id="gameSelect">
-    <option value="">اختر اللعبة</option>
-    <option value="Crash">🎢 Crash</option>
-    <option value="Mines">💣 Mines</option>
-    <option value="Blackjack">🃏 Blackjack</option>
-    <option value="Aviator">✈️ Aviator</option>
-    <option value="Dice">🎲 Dice</option>
-    <option value="Roulette">🎯 Roulette</option>
-    <!-- أضف ألعابًا أخرى لاحقًا -->
-  </select>
-
-  <!-- زر التحليل -->
-<button id="analyzeBtn">🔍 تحليل الصورة</button>
-
-  <!-- زر التحديث اليدوي -->
-  <button id="refreshBtn" onclick="manualRefresh()">🔄 تحديث يدوي</button>
-
-  <!-- النتيجة -->
-  <div id="result">📤 يرجى اختيار صورة لتحليل نتائج اللعبة.</div>
-
-  <!-- حالة الذكاء -->
-  <div id="aiStatus">
-    <h3>⚙️ حالة الذكاء الاصطناعي:</h3>
-    <ul id="aiComponents">
-      <li>Vision AI: 100%</li>
-      <li>Pattern AI: 98%</li>
-      <li>Reinforcement AI: 96%</li>
-      <li>Emulator AI: 94%</li>
-      <li>Behavioral AI: 95%</li>
-      <li>Cloud AI Collective: 99%</li>
-      <li>Voice Alert AI: 100%</li>
-      <li>Risk Management AI: 93%</li>
-      <li>Auto-Adapt AI: 97%</li>
-      <li>Predictive Timing AI: 95%</li>
-      <li>Community Trust AI: 91%</li>
-      <!-- أضف المزيد حسب الحاجة -->
-    </ul>
-    <strong>📈 قوة الذكاء الذاتي: <span id="globalPower">98%</span></strong>
-    </div>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4"></script>
-<script>
-  async function analyzeImage() {
-    const imageInput = document.getElementById('imageInput');
-    const resultDiv = document.getElementById('result');
-    const gameType = document.getElementById('gameSelect').value;
-
-    if (!imageInput.files.length || !gameType) {
-      resultDiv.innerText = "📌 يرجى اختيار صورة واختيار اللعبة.";
-      return;
-    }
-
-    const file = imageInput.files[0];
-    resultDiv.innerText = "⏳ جارٍ تحليل الصورة باستخدام Vision AI...";
-
-    // OCR باستخدام Tesseract.js
-    const { data: { text } } = await Tesseract.recognize(file, 'eng', {
-      logger: m => console.log(m)
     });
 
-    resultDiv.innerText = "✅ تم استخلاص النص. جارٍ تحليل النتائج باستخدام الذكاء الاصطناعي...";
+    // 3) live results listener
+    const liveRef = database.ref('gameResults').limitToLast(5);
+    liveRef.on('child_added', snap => {
+      const msg = snap.val();
+      const li = document.createElement('li');
+      li.textContent = `${msg.game} | ${msg.recommendation} | ${new Date(msg.timestamp).toLocaleTimeString()}`;
+      document.getElementById('resultsList').prepend(li);
+    });
 
-    // محاكاة التحليل الذكي
-    const prediction = await simulateSmartAnalysis(text, gameType);
-
-    // عرض التوصية
-    resultDiv.innerHTML = `
-      🧠 <strong>توصية ذكية:</strong><br>
-      🔍 النص المستخرج: <pre>${text}</pre>
-      📊 التوصية: <strong>${prediction}</strong>
-    `;
-
-    // تنبيه صوتي حسب الذكاء
-    speakPrediction(prediction);
-  }
-
-  async function simulateSmartAnalysis(text, gameType) {
-    let recommendation = "❌ لا يمكن التنبؤ بنتيجة حالياً.";
-    const cleanText = text.toLowerCase();
-
-    // نماذج ذكية بسيطة (قابلة للتطوير لاحقاً)
-    if (gameType === "Crash") {
-      if (cleanText.includes("1.00x")) recommendation = "🔴 لا تدخل، احتمال منخفض.";
-      else if (cleanText.includes("2.00x") || cleanText.includes("3.00x")) recommendation = "🟡 دخول حذر، احتمالية متوسطة.";
-      else if (cleanText.includes("5.00x") || cleanText.includes("10.00x")) recommendation = "🟢 فرصة قوية للدخول الآن!";
-    }
-
-    if (gameType === "Mines") {
-      const bombs = (cleanText.match(/💣|bomb/gi) || []).length;
-      recommendation = bombs >= 3 ? "⚠️ عدد كبير من الألغام، تجنب اللعب." : "✅ عدد ألغام منخفض، فرصة جيدة.";
-    }
-
-    if (gameType === "Blackjack" && cleanText.includes("21")) {
-      recommendation = "🟢 بلاك جاك! لا تدخل الآن، نسبة فوزك منخفضة.";
-    }
-
-    return recommendation;
-  }
-
-  function speakPrediction(prediction) {
-    const msg = new SpeechSynthesisUtterance();
-    msg.text = prediction.replace(/🟢|🟡|🔴|✅|⚠️/g, ''); // إزالة الرموز
-    msg.lang = "ar";
-    window.speechSynthesis.speak(msg);
-  }
-
-  function manualRefresh() {
-    const aiStatus = document.getElementById("aiStatus");
-    const now = new Date().toLocaleTimeString();
-    document.getElementById("globalPower").innerText = `${97 + Math.floor(Math.random() * 3)}%`;
-    aiStatus.insertAdjacentHTML('beforeend', `<div>🔁 تم تحديث الذكاء في: ${now}</div>`);
-  }
-</script>
-<!-- استدعاء aiModules.js بنظام ES Modules -->
-<script type="module">
-  import { aiModules } from './aiModules.js';  // تأكد من المسار النسبي الصحيح
-
-  // 1. تهيئة كل مكون مفعّل
-  aiModules.forEach(mod => {
-    if (mod.enabled && typeof mod.init === 'function') {
-      mod.init();
-    }
-  });
-
-  // 2. دالة لتشغيل جميع المحللات بعد OCR
-  async function runAllAnalyzers(context) {
-    const outputs = {};
-    for (let mod of aiModules) {
-      if (mod.enabled && typeof mod.analyze === 'function') {
-        try {
-          const out = await mod.analyze(context);
-          outputs[mod.name] = out;
-        } catch (err) {
-          console.error(`Error in ${mod.name}`, err);
-        }
+    // 4) helper: run all analyzers
+    async function runAllAnalyzers(ctx) {
+      const out = {};
+      for (let mod of aiModules) {
+        if (!mod.enabled) continue;
+        try { out[mod.name] = await mod.analyze(ctx); }
+        catch(e){ console.error(mod.name, e); }
       }
+      return out;
     }
-    return outputs;
-  }
 
-  // 3. ربط مع زر التحليل (تأكد من وجود id="analyzeBtn")
-  document.getElementById('analyzeBtn').addEventListener('click', async () => {
-    // استخراج الملف واللعبة من الواجهة
-    const file = document.getElementById('imageInput').files[0];
-    const game = document.getElementById('gameSelect').value;
-    if (!file || !game) return alert('اختر صورة ولعبة أولاً!');
+    // 5) main analyse
+    document.getElementById('analyzeBtn').onclick = async () => {
+      const fileEl = document.getElementById('imageInput');
+      const game = document.getElementById('gameSelect').value;
+      if (!fileEl.files[0] || !game) {
+        return alert('🛑 الرجاء اختيار صورة واللعبة أولاً.');
+      }
+      const file = fileEl.files[0];
+      document.getElementById('result').innerText = '⏳ جارِ التحليل...';
 
-    // 4. استدعاء Vision AI أولاً لاستخراج النص
-    const vision = aiModules.find(m => m.name === "Vision AI");
-    const { text } = await vision.analyze({ file });
+      // Vision AI first
+      const visionMod = aiModules.find(m=>m.name==='Vision AI');
+      const { text } = await visionMod.analyze({ file });
 
-    // 5. ثم استدعاء باقي المكونات
-    const allResults = await runAllAnalyzers({ file, text, game });
-    console.log("🧩 All AI results:", allResults);
+      // run other modules
+      const results = await runAllAnalyzers({ file, text, game });
 
-    // 6. مثلاً عرض النص المستخرج وبعض النتائج البسيطة
-    document.getElementById('result').innerHTML = `
-      <b>النص:</b> ${text.slice(0,200)}...<br>
-      <b>Pattern AI:</b> ${allResults["Pattern AI"].patterns.join(", ")}
-    `;
-  });
-          </script>
+      // build recommendation (مثال بسيط)
+      let recommendation = results['Pattern AI']?.patterns?.slice(-1)[0] || 'لا توجد أنماط.';
+      if (results['Reinforcement AI']) recommendation += ' (تعلّم تاريخي)';
+
+      // display
+      document.getElementById('result').innerHTML = `
+        <b>🎮 اللعبة:</b> ${game}<br>
+        <b>📄 النص المستخرج:</b><br><pre>${text}</pre><hr>
+        <b>🤖 التوصية:</b> ${recommendation}
+      `;
+
+      // save to Firebase
+      database.ref('gameResults').push({
+        game, recommendation, timestamp: Date.now()
+      });
+
+      // optional alert sound
+      if (recommendation.includes('فرصة')) {
+        document.getElementById('alertSound').play();
+      }
+    };
+
+    // 6) manual refresh button
+    document.getElementById('refreshBtn').onclick = () => {
+      document.getElementById('aiStrength').innerText += ' 🔄';
+    };
+  </script>
 </body>
 </html>
