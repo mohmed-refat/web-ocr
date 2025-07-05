@@ -104,107 +104,68 @@
     <ul id="resultsList"></ul>
   </div>
 
-  <!-- استدعاء الموديولات -->
-  <script type="module">
-    import { aiModules } from './aiModules.js';
+<!-- استدعاء الموديولات -->
+<script type="module">
+  import { aiModules } from './aiModules.js';  // تأكد من أن المسار صحيح
 
-    // Firebase init
-    const firebaseConfig = {
-      apiKey: "AIzaSyCijdq8Ji8L9e3dGoHK72LaAUWsz_e5V6Y",
-      authDomain: "web-ocr-ai.firebaseapp.com",
-      projectId: "web-ocr-ai",
-      storageBucket: "web-ocr-ai.appspot.com",
-      messagingSenderId: "847993614836",
-      appId: "1:847993614836:web:a2b6e91c94426dd01549a1",
-      measurementId: "G-TTQZPVWFL4"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
+  // تهيئة جميع المكونات المفعلة
+  aiModules.forEach(mod => {
+    if (mod.enabled && typeof mod.init === 'function') {
+      mod.init();
+    }
+  });
 
-    // 1) init modules
-    aiModules.forEach(m => m.enabled && typeof m.init === 'function' && m.init());
-
-    // 2) load cloud AI status (Realtime)
-    const statusRef = database.ref('ai-model/global');
-    statusRef.on('value', snap => {
-      const data = snap.val() || {};
-      document.getElementById('aiStrength').innerHTML =
-        `🧠 قوة النظام الذاتي: <b>${data.totalStrength||0}%</b>`;
-      document.getElementById('aiUpdate').innerText =
-        `🕓 آخر تحديث: ${data.lastUpdated||'---'}`;
-      if (data.modules) {
-        document.getElementById('aiModules').innerHTML =
-          Object.entries(data.modules)
-            .map(([k,v]) => `✅ ${k}: ${v}%`)
-            .join('<br>');
-      } else {
-        document.getElementById('aiModules').innerText = '📦 لا توجد بيانات مكونات.';
+  // دالة لتشغيل كل analyze()
+  async function runAllAnalyzers(ctx) {
+    const out = {};
+    for (let mod of aiModules) {
+      if (!mod.enabled) continue;
+      try {
+        out[mod.name] = await mod.analyze(ctx);
+      } catch (e) {
+        console.error(`Error in ${mod.name}`, e);
       }
-    });
+    }
+    return out;
+  }
 
-    // 3) live results listener
-    const liveRef = database.ref('gameResults').limitToLast(5);
-    liveRef.on('child_added', snap => {
-      const msg = snap.val();
-      const li = document.createElement('li');
-      li.textContent = `${msg.game} | ${msg.recommendation} | ${new Date(msg.timestamp).toLocaleTimeString()}`;
-      document.getElementById('resultsList').prepend(li);
-    });
+  // زرّ التحليل
+  document.getElementById('analyzeBtn').addEventListener('click', async () => {
+    const fileEl = document.getElementById('imageInput');
+    const game = document.getElementById('gameSelect').value;
+    if (!fileEl.files[0] || !game) return alert('اختر صورة ولعبة أولاً');
+    const file = fileEl.files[0];
 
-    // 4) helper: run all analyzers
-    async function runAllAnalyzers(ctx) {
-      const out = {};
-      for (let mod of aiModules) {
-        if (!mod.enabled) continue;
-        try { out[mod.name] = await mod.analyze(ctx); }
-        catch(e){ console.error(mod.name, e); }
-      }
-      return out;
+    // استخراج نص بـ Vision AI
+    const vision = aiModules.find(m => m.name === 'Vision AI');
+    const { text } = await vision.analyze({ file });
+
+    // تشغيل بقية المكونات
+    const results = await runAllAnalyzers({ file, text, game });
+
+    // بناء توصية مبدئية (مثال بسيط)
+    let recommendation = results['Pattern AI']?.patterns?.slice(-1)[0] || 'لا توجد أنماط';
+    if (results['Cloud AI Collective']?.globalRec) {
+      recommendation += ` | السحابي: ${results['Cloud AI Collective'].globalRec}`;
     }
 
-    // 5) main analyse
-    document.getElementById('analyzeBtn').onclick = async () => {
-      const fileEl = document.getElementById('imageInput');
-      const game = document.getElementById('gameSelect').value;
-      if (!fileEl.files[0] || !game) {
-        return alert('🛑 الرجاء اختيار صورة واللعبة أولاً.');
-      }
-      const file = fileEl.files[0];
-      document.getElementById('result').innerText = '⏳ جارِ التحليل...';
+    // عرض النتيجة
+    document.getElementById('result').innerHTML = `
+      <b>🎮 اللعبة:</b> ${game}<br>
+      <b>📄 النص المستخرج:</b><br><pre>${text}</pre><hr>
+      <b>🤖 التوصية النهائية:</b> ${recommendation}
+    `;
 
-      // Vision AI first
-      const visionMod = aiModules.find(m=>m.name==='Vision AI');
-      const { text } = await visionMod.analyze({ file });
+    // حفظ عالمي
+    firebase.database().ref('gameResults').push({
+      game, recommendation, timestamp: Date.now()
+    });
 
-      // run other modules
-      const results = await runAllAnalyzers({ file, text, game });
-
-      // build recommendation (مثال بسيط)
-      let recommendation = results['Pattern AI']?.patterns?.slice(-1)[0] || 'لا توجد أنماط.';
-      if (results['Reinforcement AI']) recommendation += ' (تعلّم تاريخي)';
-
-      // display
-      document.getElementById('result').innerHTML = `
-        <b>🎮 اللعبة:</b> ${game}<br>
-        <b>📄 النص المستخرج:</b><br><pre>${text}</pre><hr>
-        <b>🤖 التوصية:</b> ${recommendation}
-      `;
-
-      // save to Firebase
-      database.ref('gameResults').push({
-        game, recommendation, timestamp: Date.now()
-      });
-
-      // optional alert sound
-      if (recommendation.includes('فرصة')) {
-        document.getElementById('alertSound').play();
-      }
-    };
-
-    // 6) manual refresh button
-    document.getElementById('refreshBtn').onclick = () => {
-      document.getElementById('aiStrength').innerText += ' 🔄';
-    };
-  </script>
+    // تنبيه صوتي إذا كانت التوصية قوية
+    if (/فرصة/.test(recommendation)) {
+      document.getElementById('alertSound').play();
+    }
+  });
+</script>
 </body>
 </html>
